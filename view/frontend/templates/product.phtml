@@ -1,0 +1,7 @@
+<script>
+    window.cvg({
+        method: "track",
+        eventName: "Viewed Product",
+        properties: <?php echo json_encode($block->getCurrentProduct()) ?>
+    });
+</script>

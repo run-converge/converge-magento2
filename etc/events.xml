@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+    <event name="checkout_cart_add_product_complete">
+        <observer name="converge_converge_added_to_cart_observer" instance="Converge\Converge\Observer\AddedToCartObserver" />
+    </event>
+    <event name="controller_action_predispatch_checkout_index_index">
+        <observer name="converge_converge_started_checkout_observer" instance="Converge\Converge\Observer\StartedCheckoutObserver" />
+    </event>
+    <event name="sales_order_save_after">
+        <observer name="converge_converge_placed_order_observer" instance="Converge\Converge\Observer\PlacedOrderObserver" />
+    </event>
+</config>
