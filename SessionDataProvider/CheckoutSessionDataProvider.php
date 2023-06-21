@@ -1,6 +1,7 @@
 <?php declare(strict_types=1);
 
 namespace Converge\Converge\SessionDataProvider;
+
 use Magento\Framework\App\Request\Http;
 use Magento\Checkout\Model\Session as CheckoutSession;
 
@@ -11,7 +12,7 @@ class CheckoutSessionDataProvider
 
     public function __construct(
         CheckoutSession $checkoutSession,
-        Http $request,
+        Http $request
     ) {
         $this->checkoutSession = $checkoutSession;
         $this->request = $request;

@@ -12,7 +12,7 @@ class AddDataToCartSection
 
     public function __construct(
         CheckoutCart $checkoutCart,
-        CheckoutSessionDataProvider $checkoutSessionDataProvider,
+        CheckoutSessionDataProvider $checkoutSessionDataProvider
     ) {
         $this->checkoutCart = $checkoutCart;
         $this->checkoutSessionDataProvider = $checkoutSessionDataProvider;

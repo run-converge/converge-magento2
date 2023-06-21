@@ -19,12 +19,12 @@ class Product
 
     public function get(): array
     {
-        return array(
+        return [
             'product_id' => (string) $this->product->getId(),
             'name' => $this->product->getName(),
             'sku' => $this->product->getSku(),
             'price' => $this->product->getFinalPrice(),
             'currency' => $this->currency
-        );
+        ];
     }
 }

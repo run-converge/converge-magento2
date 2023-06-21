@@ -1,36 +1,36 @@
 <?php
 
 namespace Converge\Converge\Block;
+
 use Magento\Store\Model\ScopeInterface;
 use Magento\Store\Model\StoreManagerInterface;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 
-
 class Main extends \Magento\Framework\View\Element\Template
 {
-	protected $httpContext;
+    protected $httpContext;
     protected $request;
     private StoreManagerInterface $storeManager;
     private ScopeConfigInterface $scopeConfig;
 
-	public function __construct(
-    	\Magento\Framework\View\Element\Template\Context $context,
+    public function __construct(
+        \Magento\Framework\View\Element\Template\Context $context,
         \Magento\Framework\App\Request\Http $request,
-    	\Magento\Framework\App\Http\Context $httpContext,
+        \Magento\Framework\App\Http\Context $httpContext,
         StoreManagerInterface $storeManager,
         ScopeConfigInterface $scopeConfig,
         array $data = []
-	) {
-    	$this->httpContext = $httpContext;
+    ) {
+        $this->httpContext = $httpContext;
         $this->request = $request;
         $this->storeManager = $storeManager;
         $this->scopeConfig = $scopeConfig;
-    	parent::__construct($context, $data);
-	}
+        parent::__construct($context, $data);
+    }
 
-	public function getProfileProperties()
-	{
-    	return (object) array_filter([
+    public function getProfileProperties()
+    {
+        return (object) array_filter([
             '$magento_customer_id' => $this->httpContext->getValue('customer_id'),
             '$first_name' => $this->httpContext->getValue('customer_first_name'),
             '$last_name' => $this->httpContext->getValue('customer_last_name'),
@@ -40,7 +40,7 @@ class Main extends \Magento\Framework\View\Element\Template
             '$city' => $this->httpContext->getValue('customer_city'),
             '$country_code' => $this->httpContext->getValue('customer_country'),
         ]);
-	}
+    }
 
     public function getAliases()
     {

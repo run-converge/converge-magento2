@@ -14,7 +14,7 @@ class Product extends Template
         Template\Context $context,
         Registry $registry,
         StoreManagerInterface $storeConfig,
-        array $data = [],
+        array $data = []
     ) {
         $this->registry = $registry;
         $this->currency = $storeConfig->getStore()->getCurrentCurrencyCode();

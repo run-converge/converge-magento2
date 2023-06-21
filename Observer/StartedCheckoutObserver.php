@@ -12,7 +12,6 @@ use Magento\Framework\App\Request\Http;
 use Magento\Customer\Model\Session as CustomerSession;
 use \Magento\Checkout\Model\Session as CheckoutSession;
 
-
 class StartedCheckoutObserver implements ObserverInterface
 {
     private CheckoutSessionDataProvider $checkoutSessionDataProvider;
@@ -64,14 +63,14 @@ class StartedCheckoutObserver implements ObserverInterface
         ];
         $this->checkoutSessionDataProvider->add(
             'started_checkout_event',
-            array(
+            [
                 'method' => 'track',
                 'eventName' => 'Started Checkout',
                 'properties' => $data,
                 'aliases' => [
                     $this->checkoutSessionDataProvider->getQuoteIdAlias()
                 ]
-            )
+            ]
         );
     }
 }

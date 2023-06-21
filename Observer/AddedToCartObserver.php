@@ -8,7 +8,6 @@ use Magento\Framework\Event\ObserverInterface;
 use Magento\Store\Model\StoreManagerInterface;
 use Converge\Converge\SessionDataProvider\CheckoutSessionDataProvider;
 
-
 class AddedToCartObserver implements ObserverInterface
 {
     private CheckoutSessionDataProvider $checkoutSessionDataProvider;
@@ -31,14 +30,14 @@ class AddedToCartObserver implements ObserverInterface
         $quantity = (int)$observer->getData('request')->getParam('qty') ?? 1;
         $this->checkoutSessionDataProvider->add(
             'add_to_cart_event',
-            array(
+            [
                 'method' => 'track',
                 'eventName' => 'Added To Cart',
                 'properties' => (new LineItem($product, $this->currency, $quantity))->get(),
                 'aliases' => [
                     $this->checkoutSessionDataProvider->getQuoteIdAlias()
                 ]
-            )
+            ]
         );
     }
 }

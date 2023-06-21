@@ -12,7 +12,6 @@ use Magento\Framework\App\Request\Http;
 use Magento\Customer\Model\Session as CustomerSession;
 use \Magento\Checkout\Model\Session as CheckoutSession;
 
-
 class PlacedOrderObserver implements ObserverInterface
 {
     private CheckoutSessionDataProvider $checkoutSessionDataProvider;
@@ -68,14 +67,14 @@ class PlacedOrderObserver implements ObserverInterface
         ];
         $this->checkoutSessionDataProvider->add(
             'placed_order_event',
-            array(
+            [
                 'method' => 'track',
                 'eventName' => 'Placed Order',
                 'properties' => $data,
                 'aliases' => [
                     $this->checkoutSessionDataProvider->getQuoteIdAlias()
                 ]
-            )
+            ]
         );
     }
 }
