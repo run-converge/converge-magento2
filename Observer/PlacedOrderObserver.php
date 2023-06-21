@@ -68,7 +68,7 @@ class PlacedOrderObserver implements ObserverInterface
         $this->checkoutSessionDataProvider->add(
             'placed_order_event',
             [
-                'method' => 'track',
+                'method' => 'forward',
                 'eventName' => 'Placed Order',
                 'properties' => $data,
                 'aliases' => [
