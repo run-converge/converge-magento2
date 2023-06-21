@@ -4,8 +4,7 @@
     "type": "magento2-module",
     "version": "0.1.0",
     "require": {
-        "php": "^8",
-        "magento/module-store": "^2.3"
+        "php": "^8"
     },
     "autoload": {
         "files": [
