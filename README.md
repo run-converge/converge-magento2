@@ -1,4 +1,18 @@
 
+# Converge - Magento 2 Tracking
+## Get Started
+### Installation
+- `composer config repositories.repo-name vcs https://github.com/run-converge/converge-magento2` 
+- `composer require run-converge/converge-magento2:0.1.0`
+- `bin/magento setup:upgrade`
+### Set up
+- Get your public token from the **sources** tab in the Converge App
+- In your Magento admin
+  - go to **Stores > Settings > Configuration > Converge > Converge** and add your public token
+  - create an API token under **System > Extensions > Integrations** for the `order` resource
+- Create the server-side connection under the **sources** tab in the Converge App
+- You're good to go! 
+
 # Status
 ## Events
 - [x] $page_load
@@ -55,7 +69,7 @@
     - `php -r "unlink('composer-setup.php');"`
     - `mv composer.phar /usr/local/bin/composer`
 - in /Applications/MAMP/htdocs, create the magento project
-    - `composer create-project --repository-url=https://repo.magento.com/ magento/project-community-edition`
+    - `composer create-project --repository-url=https://repo.magento.com/ magento/project-community-edition:2.3.7-p3`
     - mv all files to htdocs root
 - create database in localhost/phpMyAdmin + create db user for magento
 - install magento
@@ -63,6 +77,7 @@
     - note the admin path
 - generate sampledata
     - `php bin/magento sampledata:deploy`
+    - `php bin/magento setup:upgrade`
 - disable MFA
     - `bin/magento module:disable {Magento_TwoFactorAuth,Magento_AdminAdobeImsTwoFactorAuth}`
 
