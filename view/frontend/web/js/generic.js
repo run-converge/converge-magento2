@@ -1,4 +1,4 @@
-require([
+define([
     'Magento_Customer/js/customer-data'
 ], function (customerData) {
     var isEmpty = function (variable) {
