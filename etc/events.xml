@@ -6,6 +6,9 @@
     <event name="controller_action_predispatch_checkout_index_index">
         <observer name="converge_converge_started_checkout_observer" instance="Converge\Converge\Observer\StartedCheckoutObserver" />
     </event>
+    <event name="controller_action_predispatch_checkout_onepage_index">
+        <observer name="converge_converge_started_checkout_observer" instance="Converge\Converge\Observer\StartedCheckoutObserver" />
+    </event>
     <event name="sales_order_save_after">
         <observer name="converge_converge_placed_order_observer" instance="Converge\Converge\Observer\PlacedOrderObserver" />
     </event>
