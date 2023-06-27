@@ -10,8 +10,8 @@ use Converge\Converge\SessionDataProvider\CheckoutSessionDataProvider;
 
 class AddedToCartObserver implements ObserverInterface
 {
-    private CheckoutSessionDataProvider $checkoutSessionDataProvider;
-    private string $currency;
+    private $checkoutSessionDataProvider;
+    private $currency;
     protected $logger;
 
     public function __construct(

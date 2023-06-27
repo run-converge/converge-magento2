@@ -14,12 +14,12 @@ use \Magento\Checkout\Model\Session as CheckoutSession;
 
 class StartedCheckoutObserver implements ObserverInterface
 {
-    private CheckoutSessionDataProvider $checkoutSessionDataProvider;
-    private string $currency;
-    private CustomerCart $cart;
-    private Http $request;
-    private CheckoutSession $checkoutSession;
-    private CustomerSession $customerSession;
+    private $checkoutSessionDataProvider;
+    private $currency;
+    private $cart;
+    private $request;
+    private $checkoutSession;
+    private $customerSession;
 
 
     public function __construct(
@@ -56,9 +56,9 @@ class StartedCheckoutObserver implements ObserverInterface
         }
         $data = [
             "id" => $quote->getId(),
-            "total_price" => $quote->getGrandTotal(),
-            "total_discount" => $quote->getSubtotalWithDiscount() - $quote->getSubtotal(),
-            "total_tax" => $quote->getShippingAddress()->getTaxAmount(),
+            "total_price" => (float) $quote->getGrandTotal(),
+            "total_discount" => (float) $quote->getSubtotalWithDiscount() - $quote->getSubtotal(),
+            "total_tax" => (float) $quote->getShippingAddress()->getTaxAmount(),
             "items" => $items,
         ];
         $this->checkoutSessionDataProvider->add(

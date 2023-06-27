@@ -7,8 +7,8 @@ use Magento\Checkout\Model\Session as CheckoutSession;
 
 class CheckoutSessionDataProvider
 {
-    private CheckoutSession $checkoutSession;
-    private Http $request;
+    private $checkoutSession;
+    private $request;
 
     public function __construct(
         CheckoutSession $checkoutSession,

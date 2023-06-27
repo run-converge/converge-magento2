@@ -10,8 +10,8 @@ class Main extends \Magento\Framework\View\Element\Template
 {
     protected $httpContext;
     protected $request;
-    private StoreManagerInterface $storeManager;
-    private ScopeConfigInterface $scopeConfig;
+    private $storeManager;
+    private $scopeConfig;
 
     public function __construct(
         \Magento\Framework\View\Element\Template\Context $context,
@@ -31,7 +31,7 @@ class Main extends \Magento\Framework\View\Element\Template
     public function getProfileProperties()
     {
         return (object) array_filter([
-            '$magento_customer_id' => $this->httpContext->getValue('customer_id'),
+            '$customer_id' => $this->httpContext->getValue('customer_id'),
             '$first_name' => $this->httpContext->getValue('customer_first_name'),
             '$last_name' => $this->httpContext->getValue('customer_last_name'),
             '$email' => $this->httpContext->getValue('customer_email'),

@@ -6,8 +6,8 @@ use Magento\Catalog\Api\Data\ProductInterface;
 
 class Product
 {
-    private ProductInterface $product;
-    private string $currency;
+    private $product;
+    private $currency;
 
     public function __construct(
         ProductInterface $product,

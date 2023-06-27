@@ -7,9 +7,9 @@ use Magento\Catalog\Api\Data\ProductInterface;
 
 class LineItem extends Product
 {
-    private ProductInterface $product;
-    private string $currency;
-    private int $quantity;
+    private $product;
+    private $currency;
+    private $quantity;
 
     public function __construct(
         ProductInterface $product,

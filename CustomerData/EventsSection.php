@@ -6,7 +6,8 @@ use Converge\Converge\SessionDataProvider\CheckoutSessionDataProvider;
 
 class EventsSection implements SectionSourceInterface
 {
-    private CheckoutSessionDataProvider $checkoutSessionDataProvider;
+    private $checkoutSessionDataProvider;
+    
     public function __construct(
         CheckoutSessionDataProvider $checkoutSessionDataProvider
     ) {

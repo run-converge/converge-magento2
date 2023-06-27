@@ -7,8 +7,8 @@ use Converge\Converge\SessionDataProvider\CheckoutSessionDataProvider;
 
 class AddDataToCartSection
 {
-    private CheckoutCart $checkoutCart;
-    private CheckoutSessionDataProvider $checkoutSessionDataProvider;
+    private $checkoutCart;
+    private $checkoutSessionDataProvider;
 
     public function __construct(
         CheckoutCart $checkoutCart,

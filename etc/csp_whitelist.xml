@@ -16,6 +16,34 @@
                 <value id="www.gstatic.com" type="host">www.gstatic.com</value>
             </values>
         </policy>
+        <policy id="frame-src">
+            <values>
+                <value id="*.runconverge.com" type="host">*.runconverge.com</value>
+                <value id="*.facebook.net" type="host">*.facebook.net</value>
+                <value id="*.facebook.com" type="host">*.facebook.com</value>
+                <value id="*.googletagmanager.com" type="host">*.googletagmanager.com</value>
+                <value id="*.google-analytics.com" type="host">*.google-analytics.com</value>
+                <value id="*.analytics.google.com" type="host">*.analytics.google.com</value>
+                <value id="*.google.com" type="host">*.google.com</value>
+                <value id="*.pinimg.com" type="host">*.pinimg.com</value>
+                <value id="ssl.gstatic.com" type="host">ssl.gstatic.com</value>
+                <value id="www.gstatic.com" type="host">www.gstatic.com</value>
+            </values>
+        </policy>
+        <policy id="form-action">
+            <values>
+                <value id="*.runconverge.com" type="host">*.runconverge.com</value>
+                <value id="*.facebook.net" type="host">*.facebook.net</value>
+                <value id="*.facebook.com" type="host">*.facebook.com</value>
+                <value id="*.googletagmanager.com" type="host">*.googletagmanager.com</value>
+                <value id="*.google-analytics.com" type="host">*.google-analytics.com</value>
+                <value id="*.analytics.google.com" type="host">*.analytics.google.com</value>
+                <value id="*.google.com" type="host">*.google.com</value>
+                <value id="*.pinimg.com" type="host">*.pinimg.com</value>
+                <value id="ssl.gstatic.com" type="host">ssl.gstatic.com</value>
+                <value id="www.gstatic.com" type="host">www.gstatic.com</value>
+            </values>
+        </policy>
         <policy id="connect-src">
             <values>
                 <value id="*.runconverge.com" type="host">*.runconverge.com</value>
