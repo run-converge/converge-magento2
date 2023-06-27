@@ -2,18 +2,23 @@
 const cvgPublicToken = <?php echo json_encode($block->getPublicToken())?>;
 if (!cvgPublicToken) {
     window.cvg = (e) => {
-        console.error('Cannot track event because Converge public token is not set:', e);
+        console.warn('Cannot track event because Converge public token is not set:', e);
     }
 } else {
     !function(){"use strict";!function(e,t,c,n,s,o,r){e.cvg||(s=e.cvg=function(){
     s.process?s.process.apply(s,arguments):s.queue.push(arguments)},s.queue=[],(o=
     t.createElement(c)).async=1,o.src=`https://static.runconverge.com/pixels/${cvgPublicToken}.js`,
     (r=t.getElementsByTagName(c)[0]).parentNode.insertBefore(o,r))}(window,document,
-    "script"),cvg({method:"track",eventName:"$page_load"})}();
+    "script")}();
 }
 </script>
 
 <script>
+    const store = <?php echo json_encode($block->getStore())?>;
+    window.cvg({
+        method: 'set',
+        eventProperties: store
+    })
     window.cvg({
         method: "track",
         eventName: "$page_load",

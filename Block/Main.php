@@ -80,6 +80,14 @@ class Main extends \Magento\Framework\View\Element\Template
         return $value;
     }
 
+    public function getStore()
+    {
+        return [
+            '$magento_store_name' => $this->storeManager->getStore()->getName(),
+            '$magento_store_id' => $this->storeManager->getStore()->getId()
+        ];
+    }
+
     public function getPublicToken()
     {
         return $this->getConfigValue('converge/settings/public_token', '');
