@@ -1,0 +1,21 @@
+<script>
+    (function() {
+        const properties = <?php echo json_encode($block->getProperties())?>;
+        const dedupKey = JSON.stringify({
+            id: properties.id,
+            items: properties.items.map(item => ({
+                id: item.product_id,
+                quantity: item.quantity
+            }))
+        });
+        const dedupCookie = `__cvg_started_checkout=${btoa(dedupKey)}`;
+        if (!document.cookie.includes(dedupCookie)) {
+            window.cvg({
+                method: 'track',
+                eventName: 'Started Checkout',
+                properties
+            })
+            document.cookie = `${dedupCookie}; path=/`;
+        }
+    })();
+</script>

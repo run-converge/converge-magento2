@@ -39,6 +39,7 @@ class Main extends \Magento\Framework\View\Element\Template
             '$state' => $this->httpContext->getValue('customer_state'),
             '$city' => $this->httpContext->getValue('customer_city'),
             '$country_code' => $this->httpContext->getValue('customer_country'),
+            '$checkout_quote_id' => $this->httpContext->getValue('checkout_quote_id')
         ]);
     }
 
@@ -46,12 +47,16 @@ class Main extends \Magento\Framework\View\Element\Template
     {
         $customerId = $this->httpContext->getValue('customer_id');
         $email = $this->httpContext->getValue('customer_email');
+        $checkoutQuoteId = $this->httpContext->getValue('checkout_quote_id');
         $aliases = [];
         if ($customerId) {
             array_push($aliases, 'urn:magento2:' . $this->request->getHttpHost() . ':customer_id:' . $customerId);
         }
         if ($email) {
             array_push($aliases, 'urn:email:' . $email);
+        }
+        if ($checkoutQuoteId) {
+            array_push($aliases, 'urn:magento2:' . $this->request->getHttpHost() . ':quote_id:' . (string) $checkoutQuoteId);
         }
         return $aliases;
     }
