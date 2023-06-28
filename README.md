@@ -12,7 +12,7 @@
 - Create the server-side connection under the **sources** tab in the Converge App
 - You're good to go! 
 
-# Functionality
+## Functionality
 - Automatically tracks properties for logged in customers such as name, email, etc.
 - Automatically tracks the following events
   - `$page_load`
