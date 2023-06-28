@@ -1,6 +1,11 @@
 <script>
 const cvgPublicToken = <?php echo json_encode($block->getPublicToken())?>;
-if (!cvgPublicToken) {
+if (window !== window.parent) {
+    // we are in an iframe
+    window.cvg = (e) => {
+        console.info('Skipping tracking a Converge event because the pixel is loaded in an iFrame:', e);
+    }
+} else if (!cvgPublicToken) {
     window.cvg = (e) => {
         console.warn('Cannot track event because Converge public token is not set:', e);
     }
