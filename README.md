@@ -3,7 +3,10 @@
 ### Installation
 - `composer config repositories.repo-name vcs https://github.com/run-converge/converge-magento2` 
 - `composer require run-converge/converge-magento2:0.1.0`
+- `bin/magento module:enable Converge_Converge`
 - `bin/magento setup:upgrade`
+- `bin/magento setup:static-content:deploy`
+
 ### Set up
 - Get your public token from the **sources** tab in the Converge App
 - In your Magento admin
