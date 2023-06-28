@@ -1,21 +1,21 @@
 <script>
     (function() {
         const properties = <?php echo json_encode($block->getProperties())?>;
-        const dedupKey = JSON.stringify({
+        const dedupValue = btoa(JSON.stringify({
             id: properties.id,
             items: properties.items.map(item => ({
                 id: item.product_id,
                 quantity: item.quantity
             }))
-        });
-        const dedupCookie = `__cvg_started_checkout=${btoa(dedupKey)}`;
-        if (!document.cookie.includes(dedupCookie)) {
+        }));
+        const dedupKey = `__cvg_started_checkout`;
+        if (localStorage.getItem(dedupKey) !== dedupValue) {
             window.cvg({
                 method: 'track',
                 eventName: 'Started Checkout',
                 properties
             })
-            document.cookie = `${dedupCookie}; path=/`;
+            localStorage.setItem(dedupKey, dedupValue);
         }
     })();
 </script>
