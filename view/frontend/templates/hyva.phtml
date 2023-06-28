@@ -1,19 +1,14 @@
 <script>
     window.addEventListener('private-content-loaded', function(event) {
-        ['cart', 'customer'].forEach(function (sectionName) {
+        ['cart', 'customer', 'events-section'].forEach(function (sectionName) {
             const cvgEvents = event.detail.data[sectionName].cvg_events;
             if (!cvgEvents) return;
 
             for (const [eventId, eventData] of Object.entries(cvgEvents)) {
-                if (eventData.triggered === true) {
+                if (eventData.triggered) {
                     continue;
                 }
-
                 window.cvg(eventData);
-
-                if (!eventData.meta || !eventData.meta.cacheable) {
-                    delete sectionData['cvg_events'][eventId];
-                }
                 eventData.triggered = true;
             }
         });
