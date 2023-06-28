@@ -1,0 +1,16 @@
+<script>
+    (function() {
+        const properties = <?php echo json_encode($block->getProperties())?>;
+        const profileProperties = <?php echo json_encode($block->getProfileProperties())?>;
+        const dedupCookie = `__cvg_placed_order=${properties.id}`;
+        if (!document.cookie.includes(dedupCookie)) {
+            window.cvg({
+                method: 'track',
+                eventName: 'Placed Order',
+                properties,
+                profileProperties
+            })
+            document.cookie = `${dedupCookie}; path=/`;
+        }
+    })();
+</script>

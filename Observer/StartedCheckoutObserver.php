@@ -13,6 +13,8 @@ use Magento\Framework\App\Request\Http;
 use Magento\Customer\Model\Session as CustomerSession;
 use \Magento\Checkout\Model\Session as CheckoutSession;
 
+// DEPRECATED!!!
+// Started Checkout is now tracked through a block on the checkout page
 
 class StartedCheckoutObserver implements ObserverInterface
 {
