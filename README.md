@@ -15,7 +15,7 @@
   - Note: for multi-store setups, you may want to use a specific __store view code__ for the server-side connection (e.g. https://example.com/rest/my_store_view). You can find your store view code under the **Stores > All stores**.
 - You're good to go! 
 
-# Functionality
+## Functionality
 - Automatically tracks properties for logged in customers such as name, email, etc.
 - Automatically tracks the following events
   - `$page_load`
