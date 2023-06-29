@@ -29,7 +29,7 @@ class Order
             ];
         }
         return [
-            "id" => $this->order->getId(),
+            "id" => $this->order->getQuoteId(),
             "total_price" => (float) $this->order->getGrandTotal(),
             "total_discount" => (float) $this->order->getDiscountAmount(),
             "total_tax" => (float) $this->order->getTaxAmount(),

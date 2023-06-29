@@ -6,7 +6,7 @@
         const dedupValue = properties.id;
         if (localStorage.getItem(dedupKey) !== dedupValue) {
             window.cvg({
-                method: 'track',
+                method: 'forward',
                 eventName: 'Placed Order',
                 eventID: properties.id,
                 properties,
