@@ -1,17 +1,22 @@
 <script>
-    const firedIDs = new Set();
+    const firedEvents = JSON.parse(sessionStorage.getItem('__cvg_events_dedup') || '{}');
+    const isDuplicateEvent = (eventData) => {
+        if (eventData.triggered) return true;
+        eventData.triggered = true;
+        if (!eventData.eventID) return false;
+        const key = `${eventData.eventName}::${eventData.eventID}`;
+        if (firedEvents[key]) return true;
+        firedEvents[key] = true;
+        sessionStorage.setItem('__cvg_events_dedup', JSON.stringify(firedEvents));
+        return false;
+    };
     window.addEventListener('private-content-loaded', function(event) {
         ['cart', 'customer', 'events-section'].forEach(function (sectionName) {
             const cvgEvents = event.detail.data[sectionName].cvg_events;
             if (!cvgEvents) return;
 
-            for (const [, eventData] of Object.entries(cvgEvents)) {
-                if (eventData.triggered || firedIDs.has(eventData.eventID)) {
-                    continue;
-                }
-                window.cvg(eventData);
-                eventData.triggered = true;
-                if (eventData.eventID) firedIDs.add(eventData.eventID);
+            for (const [eventID, eventData] of Object.entries(cvgEvents)) {
+                if (!isDuplicateEvent(eventData)) window.cvg(eventData);
             }
         });
     });
