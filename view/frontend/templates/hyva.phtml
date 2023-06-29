@@ -1,15 +1,17 @@
 <script>
+    const firedIDs = new Set();
     window.addEventListener('private-content-loaded', function(event) {
         ['cart', 'customer', 'events-section'].forEach(function (sectionName) {
             const cvgEvents = event.detail.data[sectionName].cvg_events;
             if (!cvgEvents) return;
 
-            for (const [eventId, eventData] of Object.entries(cvgEvents)) {
-                if (eventData.triggered) {
+            for (const [, eventData] of Object.entries(cvgEvents)) {
+                if (eventData.triggered || firedIDs.has(eventData.eventID)) {
                     continue;
                 }
                 window.cvg(eventData);
                 eventData.triggered = true;
+                if (eventData.eventID) firedIDs.add(eventData.eventID);
             }
         });
     });

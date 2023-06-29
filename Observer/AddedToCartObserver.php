@@ -32,6 +32,7 @@ class AddedToCartObserver implements ObserverInterface
             'add_to_cart_event',
             [
                 'method' => 'track',
+                'eventID' => uniqid('', true),
                 'eventName' => 'Added To Cart',
                 'properties' => (new LineItem($product, $this->currency, $quantity))->get(),
                 'aliases' => [
