@@ -1,4 +1,5 @@
 <script>
+    window.cvg||(cvg=function(){cvg.process?cvg.process.apply(cvg,arguments):cvg.queue.push(arguments)},cvg.queue=[]);
     (function() {
         const properties = <?php echo json_encode($block->getProperties())?>;
         const profileProperties = <?php echo json_encode($block->getProfileProperties())?>;

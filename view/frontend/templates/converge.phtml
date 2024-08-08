@@ -20,6 +20,7 @@ if (window !== window.parent) {
 
 <script>
     const store = <?php echo json_encode($block->getStore())?>;
+    window.cvg||(cvg=function(){cvg.process?cvg.process.apply(cvg,arguments):cvg.queue.push(arguments)},cvg.queue=[]);
     window.cvg({
         method: 'set',
         eventProperties: store
