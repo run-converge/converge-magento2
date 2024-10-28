@@ -8,7 +8,6 @@ use Magento\Framework\App\Config\ScopeConfigInterface;
 
 class Main extends \Magento\Framework\View\Element\Template
 {
-    protected $request;
     private $storeManager;
     private $scopeConfig;
 

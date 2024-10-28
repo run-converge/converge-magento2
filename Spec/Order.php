@@ -24,7 +24,7 @@ class Order
                 "name" => $item->getName(),
                 "sku" => $item->getSku(),
                 "price" => (float) $item->getPrice(),
-                "quantity" => $item->getQtyOrdered(),
+                "quantity" => (float) $item->getQtyOrdered(),
                 "currency" => $this->currency
             ];
         }
