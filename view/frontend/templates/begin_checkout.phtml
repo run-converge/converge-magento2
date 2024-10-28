@@ -1,7 +1,9 @@
-<script>
+<?php
+$properties = json_encode($block->getProperties());
+$scriptString = <<<script
     window.cvg||(cvg=function(){cvg.process?cvg.process.apply(cvg,arguments):cvg.queue.push(arguments)},cvg.queue=[]);
     (function() {
-        const properties = <?php echo json_encode($block->getProperties())?>;
+        const properties = $properties;
         const dedupValue = btoa(JSON.stringify({
             id: properties.id,
             items: properties.items.map(item => ({
@@ -19,4 +21,6 @@
             localStorage.setItem(dedupKey, dedupValue);
         }
     })();
-</script>
+script;
+?>
+<?= /* @noEscape */ $secureRenderer->renderTag('script', [], $scriptString, false) ?>

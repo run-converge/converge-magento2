@@ -10,14 +10,30 @@
         sessionStorage.setItem('__cvg_events_dedup', JSON.stringify(firedEvents));
         return false;
     };
-    window.addEventListener('private-content-loaded', function(event) {
-        ['cart', 'customer', 'events-section'].forEach(function (sectionName) {
-            const cvgEvents = event.detail.data[sectionName].cvg_events;
-            if (!cvgEvents) return;
 
-            for (const [eventID, eventData] of Object.entries(cvgEvents)) {
-                if (!isDuplicateEvent(eventData)) window.cvg(eventData);
-            }
-        });
+    const processIdentify = function (sectionData) {
+        const aliases = sectionData?.cvg_aliases;
+        const profileProperties = sectionData?.cvg_profile_properties;
+        if (aliases || profileProperties) {
+            window.cvg({
+                method: 'set',
+                aliases,
+                profileProperties
+            })
+        }
+    }
+
+    const processSection = (sectionData) => {
+        processIdentify(sectionData);
+        const cvgEvents = sectionData?.cvg_events || {};
+        for (const eventId in cvgEvents) {
+            const eventData = cvgEvents[eventId];
+            if (!isDuplicateEvent(eventData)) window.cvg(eventData);
+        }
+    }
+
+    window.addEventListener('private-content-loaded', function(event) {
+        processSection(event.detail.data.cart);
+        processSection(event.detail.data.customer);
     });
 </script>

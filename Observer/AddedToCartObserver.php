@@ -28,16 +28,13 @@ class AddedToCartObserver implements ObserverInterface
     {
         $product = $observer->getData('product');
         $quantity = (int)$observer->getData('request')->getParam('qty') ?? 1;
-        $this->checkoutSessionDataProvider->add(
+        $this->checkoutSessionDataProvider->addEvent(
             'add_to_cart_event',
             [
                 'method' => 'track',
                 'eventID' => uniqid('', true),
                 'eventName' => 'Added To Cart',
                 'properties' => (new LineItem($product, $this->currency, $quantity))->get(),
-                'aliases' => [
-                    $this->checkoutSessionDataProvider->getQuoteIdAlias()
-                ]
             ]
         );
     }

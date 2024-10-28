@@ -1,34 +1,29 @@
-<script>
-const cvgPublicToken = <?php echo json_encode($block->getPublicToken())?>;
-if (window !== window.parent) {
-    // we are in an iframe
-    window.cvg = (e) => {
-        console.info('Skipping tracking a Converge event because the pixel is loaded in an iFrame:', e);
-    }
-} else if (!cvgPublicToken) {
-    window.cvg = (e) => {
-        console.warn('Cannot track event because Converge public token is not set:', e);
-    }
-} else {
-    !function(){"use strict";!function(e,t,c,n,s,o,r){e.cvg||(s=e.cvg=function(){
-    s.process?s.process.apply(s,arguments):s.queue.push(arguments)},s.queue=[],(o=
-    t.createElement(c)).async=1,o.src=`https://static.runconverge.com/pixels/${cvgPublicToken}.js`,
-    (r=t.getElementsByTagName(c)[0]).parentNode.insertBefore(o,r))}(window,document,
-    "script")}();
-}
-</script>
+<?php
 
-<script>
-    const store = <?php echo json_encode($block->getStore())?>;
+$publicToken = json_encode($block->getPublicToken());
+$store = json_encode($block->getStore());
+$scriptString = <<<script
+    const publicToken = $publicToken;
+    if (window !== window.parent) {
+        // we are in an iframe
+        window.cvg = (e) => {
+            console.info('Skipping tracking a Converge event because the pixel is loaded in an iFrame:', e);
+        }
+    } else if (!publicToken) {
+        window.cvg = (e) => {
+            console.warn('Cannot track event because Converge public token is not set:', e);
+        }
+    } else {
+        !function(){"use strict";!function(e,t,c,n,s,o,r){e.cvg||(s=e.cvg=function(){
+        s.process?s.process.apply(s,arguments):s.queue.push(arguments)},s.queue=[],(o=
+        t.createElement(c)).async=1,o.src="https://static.runconverge.com/pixels/"+publicToken+".js",
+        (r=t.getElementsByTagName(c)[0]).parentNode.insertBefore(o,r))}(window,document,
+        "script")}();
+    }
+
     window.cvg||(cvg=function(){cvg.process?cvg.process.apply(cvg,arguments):cvg.queue.push(arguments)},cvg.queue=[]);
-    window.cvg({
-        method: 'set',
-        eventProperties: store
-    })
-    window.cvg({
-        method: "track",
-        eventName: "$page_load",
-        profileProperties: <?php echo json_encode($block->getProfileProperties())?>,
-        aliases: <?php echo json_encode($block->getAliases())?>
-    });
-</script>
+    window.cvg({ method: 'set', eventProperties: $store })
+    window.cvg({ method: "track", eventName: "\$page_load" });
+script;
+?>
+<?= /* @noEscape */ $secureRenderer->renderTag('script', [], $scriptString, false) ?>
