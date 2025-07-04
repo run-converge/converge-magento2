@@ -3,17 +3,21 @@
 namespace Converge\Converge\Spec;
 
 use Magento\Quote\Model\Quote;
+use Magento\Catalog\Helper\Image as ImageHelper;
 
 class Checkout
 {
     private $quote;
+    private $imageHelper;
     private $currency;
 
     public function __construct(
         Quote $quote,
+        ImageHelper $imageHelper,
         string $currency
     ) {
         $this->quote = $quote;
+        $this->imageHelper = $imageHelper;
         $this->currency = $currency;
     }
 
@@ -26,8 +30,10 @@ class Checkout
                 "name" => $item->getName(),
                 "sku" => $item->getSku(),
                 "price" => (float) $item->getPrice(),
-                "quantity" => $item->getQty(),
-                "currency" => $this->currency
+                "quantity" => $item->getQty() ?: 1,
+                "currency" => $this->currency,
+                "image_url" => $this->imageHelper->init($item->getProduct(), 'checkout_cart_item_thumbnail')->getUrl(),
+                "url" => $item->getProduct()->getProductUrl(),
             ];
         }
         $totals = $this->quote->getTotals();
