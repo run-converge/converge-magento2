@@ -14,6 +14,11 @@
                     <label>Converge Public Token</label>
                     <comment><![CDATA[You get a public token in Converge > Sources by creating a new client-side source.]]></comment>
                 </field>
+                <field id="order_dedup_method" type="select" translate="label" sortOrder="4" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Placed Order ID</label>
+                    <source_model>Converge\Converge\Model\Config\Source\OrderDedupMethod</source_model>
+                    <comment><![CDATA[Select which ID you want to assign to your Placed Order events.]]></comment>
+                </field>
             </group>
         </section>
     </system>

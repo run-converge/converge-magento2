@@ -2,17 +2,28 @@
 
 namespace Converge\Converge\Spec;
 
+use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\Store\Model\ScopeInterface;
+
 class Order
 {
     private $order;
     private $currency;
+    private $orderDedupMethod;
 
     public function __construct(
         \Magento\Sales\Model\Order $order,
+        string $orderDedupMethod,
         string $currency
     ) {
         $this->order = $order;
         $this->currency = $currency;
+        $this->orderDedupMethod = $orderDedupMethod;
+    }
+
+    private function getOrderId(): string
+    {
+        return $this->orderDedupMethod === 'order_id' ? $this->order->getRealOrderId() : $this->order->getQuoteId();
     }
 
     public function get(): array
@@ -29,7 +40,7 @@ class Order
             ];
         }
         return [
-            "id" => $this->order->getQuoteId(),
+            "id" => $this->getOrderId(),
             "total_price" => (float) $this->order->getGrandTotal(),
             "total_discount" => (float) $this->order->getDiscountAmount(),
             "total_tax" => (float) $this->order->getTaxAmount(),
