@@ -27,7 +27,7 @@ class AddedToCartObserver implements ObserverInterface
     public function execute(Observer $observer)
     {
         $product = $observer->getData('product');
-        $quantity = (int)$observer->getData('request')->getParam('qty') ?? 1;
+        $quantity = (int)$observer->getData('request')->getParam('qty') ?: 1;
         $this->checkoutSessionDataProvider->addEvent(
             'add_to_cart_event',
             [
