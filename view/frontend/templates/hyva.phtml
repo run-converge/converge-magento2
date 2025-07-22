@@ -1,6 +1,4 @@
 <script>
-    window.cvg||(cvg=function(){cvg.process?cvg.process.apply(cvg,arguments):cvg.queue.push(arguments)},cvg.queue=[]);
-
     const firedEvents = JSON.parse(sessionStorage.getItem('__cvg_events_dedup') || '{}');
     const isDuplicateEvent = (eventData) => {
         if (eventData.triggered) return true;

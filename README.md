@@ -2,7 +2,7 @@
 ## Get Started
 ### Installation
 - `composer config repositories.repo-name vcs https://github.com/run-converge/converge-magento2` 
-- `composer require run-converge/converge-magento2:0.1.6`
+- `composer require run-converge/converge-magento2:0.1.7`
 - `bin/magento module:enable Converge_Converge`
 - `bin/magento setup:upgrade`
 - `bin/magento setup:static-content:deploy`
