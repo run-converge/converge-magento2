@@ -33,11 +33,13 @@ class Checkout
         $totals = $this->quote->getTotals();
         $tax = (isset($totals['tax'])) ? $totals['tax']->getValue(): 0;
         $discount = (isset($totals['discount'])) ? $totals['discount']->getValue(): 0;
+        $shipping = isset($totals['shipping']) ? $totals['shipping']->getValue() : 0;
         return [
             "id" => $this->quote->getId(),
             "total_price" => (float) $this->quote->getGrandTotal(),
             "total_discount" => $discount,
             "total_tax" => $tax,
+            "total_shipping" => $shipping,
             "currency" => $this->currency,
             "items" => $items,
         ];
