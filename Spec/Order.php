@@ -44,6 +44,7 @@ class Order
             "total_price" => (float) $this->order->getGrandTotal(),
             "total_discount" => (float) $this->order->getDiscountAmount(),
             "total_tax" => (float) $this->order->getTaxAmount(),
+            "total_shipping" => (float) $this->order->getShippingAmount(),
             "currency" => $this->currency,
             "items" => $items,
         ];
