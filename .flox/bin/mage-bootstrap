@@ -1,0 +1,126 @@
+#!/usr/bin/env bash
+# Scaffold a local Magento 2 install under $MAGENTO_ROOT and symlink this
+# module into app/code/Converge/Converge so changes here are picked up.
+#
+# Prereqs:
+#   - Magento Marketplace auth keys exported as
+#       MAGENTO_PUBLIC_KEY  (used as composer http-basic username)
+#       MAGENTO_PRIVATE_KEY (used as composer http-basic password)
+#     Get them at https://marketplace.magento.com → My Profile → Access Keys.
+#   - `flox services start` has been run (mariadb + opensearch up).
+#
+# Idempotent: re-running just re-syncs and re-runs setup:upgrade.
+set -euo pipefail
+
+: "${REPO_ROOT:?run from inside the flox env (flox activate)}"
+: "${MAGENTO_ROOT:?run from inside the flox env (flox activate)}"
+: "${MAGENTO_VERSION:?}"
+: "${MAGENTO_DB_NAME:?}" "${MAGENTO_DB_USER:?}" "${MAGENTO_DB_PASS:?}"
+: "${MAGENTO_ADMIN_USER:?}" "${MAGENTO_ADMIN_PASS:?}" "${MAGENTO_BASE_URL:?}"
+: "${MARIADB_SOCKET:?}"
+
+step() { printf '\n\033[1;36m▶ %s\033[0m\n' "$*"; }
+
+# ── Prerequisites ─────────────────────────────────────────────────────────
+if [ -z "${MAGENTO_PUBLIC_KEY:-}" ] || [ -z "${MAGENTO_PRIVATE_KEY:-}" ]; then
+  cat >&2 <<'EOF'
+error: MAGENTO_PUBLIC_KEY and MAGENTO_PRIVATE_KEY must be set in your shell.
+
+Get them from https://marketplace.magento.com → My Profile → Access Keys,
+then either export them in your shell:
+  export MAGENTO_PUBLIC_KEY=...
+  export MAGENTO_PRIVATE_KEY=...
+
+or add them to a local, gitignored .flox/env/.env file.
+EOF
+  exit 1
+fi
+
+if ! mysqladmin --socket="$MARIADB_SOCKET" ping >/dev/null 2>&1; then
+  echo "error: mariadb is not running — run 'flox services start mariadb' first" >&2
+  exit 1
+fi
+
+# ── 1. composer auth ──────────────────────────────────────────────────────
+step "configuring composer auth for repo.magento.com"
+composer global config --auth http-basic.repo.magento.com \
+  "$MAGENTO_PUBLIC_KEY" "$MAGENTO_PRIVATE_KEY"
+
+# ── 2. create-project ─────────────────────────────────────────────────────
+if [ ! -f "$MAGENTO_ROOT/bin/magento" ]; then
+  step "creating Magento $MAGENTO_VERSION project under $MAGENTO_ROOT"
+  composer create-project \
+    --repository-url=https://repo.magento.com/ \
+    "magento/project-community-edition=$MAGENTO_VERSION" \
+    "$MAGENTO_ROOT" \
+    --no-interaction
+else
+  echo "✓ Magento already exists at $MAGENTO_ROOT (skipping create-project)"
+fi
+
+# ── 3. database ───────────────────────────────────────────────────────────
+step "ensuring database $MAGENTO_DB_NAME + user $MAGENTO_DB_USER exist"
+mysql --socket="$MARIADB_SOCKET" -uroot <<SQL
+CREATE DATABASE IF NOT EXISTS \`$MAGENTO_DB_NAME\`
+  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS '$MAGENTO_DB_USER'@'localhost'
+  IDENTIFIED BY '$MAGENTO_DB_PASS';
+GRANT ALL PRIVILEGES ON \`$MAGENTO_DB_NAME\`.* TO '$MAGENTO_DB_USER'@'localhost';
+FLUSH PRIVILEGES;
+SQL
+
+# ── 4. symlink the module ────────────────────────────────────────────────
+step "linking this module into app/code/Converge/Converge"
+mkdir -p "$MAGENTO_ROOT/app/code/Converge"
+TARGET="$MAGENTO_ROOT/app/code/Converge/Converge"
+if [ -L "$TARGET" ] || [ -e "$TARGET" ]; then
+  rm -rf "$TARGET"
+fi
+ln -s "$REPO_ROOT" "$TARGET"
+echo "✓ $TARGET → $REPO_ROOT"
+
+# ── 5. setup:install (if not yet installed) ──────────────────────────────
+cd "$MAGENTO_ROOT"
+if [ ! -f app/etc/env.php ]; then
+  step "running bin/magento setup:install"
+  php -d memory_limit="${PHP_MEMORY_LIMIT:-4G}" bin/magento setup:install \
+    --base-url="$MAGENTO_BASE_URL" \
+    --db-host="localhost" \
+    --db-name="$MAGENTO_DB_NAME" \
+    --db-user="$MAGENTO_DB_USER" \
+    --db-password="$MAGENTO_DB_PASS" \
+    --admin-firstname=admin --admin-lastname=admin \
+    --admin-email=dev@runconverge.com \
+    --admin-user="$MAGENTO_ADMIN_USER" \
+    --admin-password="$MAGENTO_ADMIN_PASS" \
+    --language=en_US --currency=USD --timezone=America/Los_Angeles \
+    --use-rewrites=1 \
+    --search-engine=opensearch \
+    --opensearch-host=127.0.0.1 \
+    --opensearch-port=9200 \
+    --no-interaction
+
+  step "disabling MFA modules for local dev"
+  php bin/magento module:disable Magento_TwoFactorAuth Magento_AdminAdobeImsTwoFactorAuth || true
+fi
+
+# ── 6. enable our module + upgrade ───────────────────────────────────────
+step "enabling Converge_Converge"
+php -d memory_limit="${PHP_MEMORY_LIMIT:-4G}" bin/magento module:enable Converge_Converge
+php -d memory_limit="${PHP_MEMORY_LIMIT:-4G}" bin/magento setup:upgrade
+php -d memory_limit="${PHP_MEMORY_LIMIT:-4G}" bin/magento cache:flush
+
+cat <<EOF
+
+✓ Magento is ready.
+
+  Admin URL : ${MAGENTO_BASE_URL}admin
+  Admin user: $MAGENTO_ADMIN_USER
+  Admin pass: $MAGENTO_ADMIN_PASS
+
+Next:
+  mage-serve              # start a webserver on :8080
+  mage cache:clean        # iterate
+  mage-lint               # phpcs
+
+EOF

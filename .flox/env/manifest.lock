@@ -1,0 +1,2740 @@
+{
+  "lockfile-version": 1,
+  "manifest": {
+    "schema-version": "1.12.0",
+    "install": {
+      "composer": {
+        "pkg-path": "php82Packages.composer"
+      },
+      "git": {
+        "pkg-path": "git"
+      },
+      "gnumake": {
+        "pkg-path": "gnumake"
+      },
+      "jq": {
+        "pkg-path": "jq"
+      },
+      "mariadb": {
+        "pkg-path": "mariadb_106"
+      },
+      "nodejs": {
+        "pkg-path": "nodejs_20"
+      },
+      "opensearch": {
+        "pkg-path": "opensearch"
+      },
+      "php82": {
+        "pkg-path": "php82"
+      },
+      "php82Extensions-bcmath": {
+        "pkg-path": "php82Extensions.bcmath"
+      },
+      "php82Extensions-gd": {
+        "pkg-path": "php82Extensions.gd"
+      },
+      "php82Extensions-intl": {
+        "pkg-path": "php82Extensions.intl"
+      },
+      "php82Extensions-mysqli": {
+        "pkg-path": "php82Extensions.mysqli"
+      },
+      "php82Extensions-opcache": {
+        "pkg-path": "php82Extensions.opcache"
+      },
+      "php82Extensions-pdo_mysql": {
+        "pkg-path": "php82Extensions.pdo_mysql"
+      },
+      "php82Extensions-soap": {
+        "pkg-path": "php82Extensions.soap"
+      },
+      "php82Extensions-sockets": {
+        "pkg-path": "php82Extensions.sockets"
+      },
+      "php82Extensions-xdebug": {
+        "pkg-path": "php82Extensions.xdebug"
+      },
+      "php82Extensions-xsl": {
+        "pkg-path": "php82Extensions.xsl"
+      },
+      "php82Extensions-zip": {
+        "pkg-path": "php82Extensions.zip"
+      },
+      "unzip": {
+        "pkg-path": "unzip"
+      },
+      "yarn": {
+        "pkg-path": "yarn"
+      }
+    },
+    "vars": {
+      "MAGENTO_ADMIN_PASS": "magento123",
+      "MAGENTO_ADMIN_USER": "admin",
+      "MAGENTO_BASE_URL": "http://localhost:8080/",
+      "MAGENTO_DB_NAME": "magento",
+      "MAGENTO_DB_PASS": "magento",
+      "MAGENTO_DB_USER": "magento",
+      "MAGENTO_VERSION": "2.4.7-p3",
+      "MAGENTO_WORKDIR": ".magento"
+    },
+    "hook": {
+      "on-activate": "  # --- Repo root --------------------------------------------------\n  export REPO_ROOT=\"$FLOX_ENV_PROJECT\"\n  export MAGENTO_ROOT=\"$REPO_ROOT/$MAGENTO_WORKDIR\"\n\n  # --- Per-env state dirs (gitignored, under .flox/cache) --------\n  export STATE_DIR=\"$FLOX_ENV_CACHE/state\"\n  export MARIADB_DATADIR=\"$STATE_DIR/mariadb\"\n  export MARIADB_SOCKET=\"$STATE_DIR/mariadb.sock\"\n  export MARIADB_PIDFILE=\"$STATE_DIR/mariadb.pid\"\n  export MARIADB_LOG=\"$STATE_DIR/mariadb.log\"\n  export OPENSEARCH_HOME=\"$STATE_DIR/opensearch\"\n  export OPENSEARCH_DATA=\"$OPENSEARCH_HOME/data\"\n  export OPENSEARCH_LOGS=\"$OPENSEARCH_HOME/logs\"\n  mkdir -p \"$STATE_DIR\" \"$OPENSEARCH_DATA\" \"$OPENSEARCH_LOGS\"\n\n  # --- PHP extensions ---------------------------------------------\n  # When php82 is installed alongside php82Extensions.*, Flox/nixpkgs\n  # composes a `php-with-extensions` wrapper. The wrapper's php.ini\n  # lives in <wrapper>/lib/ and loads the bundled defaults (bcmath,\n  # intl, gd, mbstring, iconv, …). A handful of extensions are NOT\n  # auto-bundled (xsl, xdebug) — drop ini snippets for them into our\n  # own scan dir.\n  #\n  # The wrapper exports PHP_INI_SCAN_DIR with setenv(..., 0), i.e.\n  # \"don't overwrite if already set\", so a naive override blanks the\n  # default. Resolve the wrapper's lib dir from the binary and include\n  # it explicitly alongside ours.\n  if command -v php >/dev/null; then\n    _php_wrapper_lib=\"$(realpath \"$(command -v php)\")\"\n    _php_wrapper_lib=\"${_php_wrapper_lib%/bin/php}/lib\"\n    _ini_extra=\"$STATE_DIR/php-ini.d\"\n    mkdir -p \"$_ini_extra\"\n    rm -f \"$_ini_extra\"/*.ini\n    for _ext in xsl xdebug; do\n      _so=\"$FLOX_ENV/lib/php/extensions/${_ext}.so\"\n      if [ -f \"$_so\" ]; then\n        if [ \"$_ext\" = \"xdebug\" ]; then\n          echo \"zend_extension=$_so\" > \"$_ini_extra/${_ext}.ini\"\n        else\n          echo \"extension=$_so\" > \"$_ini_extra/${_ext}.ini\"\n        fi\n      fi\n    done\n    export PHP_INI_SCAN_DIR=\"$_php_wrapper_lib:$_ini_extra\"\n    unset _php_wrapper_lib _ini_extra _ext _so\n  fi\n\n  # --- Magento needs lots of memory for composer/setup -----------\n  export COMPOSER_MEMORY_LIMIT=-1\n  export PHP_MEMORY_LIMIT=4G\n\n  # --- Helper scripts on PATH ------------------------------------\n  export PATH=\"$REPO_ROOT/.flox/bin:$PATH\"\n"
+    },
+    "profile": {
+      "common": "  cat <<'BANNER'\n┌────────────────────────────────────────────────────────────────┐\n│ Converge Magento 2 dev env                                     │\n│                                                                │\n│ php / composer / mariadb / opensearch are on PATH              │\n│                                                                │\n│ Common commands:                                               │\n│   flox services start         start mariadb + opensearch       │\n│   flox services status        see what is running              │\n│   mage-bootstrap              install Magento into .magento/   │\n│   mage <cmd>                  bin/magento against the scaffold │\n│   mage-lint                   run magento-coding-standard      │\n│   mage-serve                  start PHP built-in webserver     │\n└────────────────────────────────────────────────────────────────┘\nBANNER\n"
+    },
+    "options": {
+      "systems": [
+        "x86_64-linux",
+        "aarch64-linux",
+        "x86_64-darwin",
+        "aarch64-darwin"
+      ]
+    },
+    "services": {
+      "mariadb": {
+        "command": "  set -e\n  # mariadbd refuses to run as root. flox-on-Linux dev shells are\n  # normally launched as the developer's user; if you're somehow\n  # running as root (e.g. in a container), `su` to an unprivileged\n  # user before starting services.\n  USER_NAME=\"$(whoami)\"\n  if [ ! -d \"$MARIADB_DATADIR/mysql\" ]; then\n    mariadb-install-db --auth-root-authentication-method=normal \\\n      --datadir=\"$MARIADB_DATADIR\" --user=\"$USER_NAME\" >/dev/null\n  fi\n  exec mariadbd \\\n    --datadir=\"$MARIADB_DATADIR\" \\\n    --socket=\"$MARIADB_SOCKET\" \\\n    --pid-file=\"$MARIADB_PIDFILE\" \\\n    --port=3306 \\\n    --bind-address=127.0.0.1 \\\n    --user=\"$USER_NAME\" \\\n    --log-error=\"$MARIADB_LOG\"\n",
+        "is-daemon": false,
+        "shutdown": {
+          "command": "  if [ -f \"$MARIADB_PIDFILE\" ]; then\n    kill \"$(cat \"$MARIADB_PIDFILE\")\" 2>/dev/null || true\n  fi\n"
+        }
+      },
+      "opensearch": {
+        "command": "  set -e\n  # nixpkgs' opensearch needs OPENSEARCH_HOME pointed at the install\n  # tree (the wrapper doesn't set it); resolve it from the binary.\n  _os_bin=\"$(realpath \"$(command -v opensearch)\")\"\n  export OPENSEARCH_HOME=\"${_os_bin%/bin/opensearch}\"\n  unset _os_bin\n  # NB: opensearch refuses to run as root; do not invoke `flox services\n  # start opensearch` as root — switch to an unprivileged user first.\n\n  # OpenSearch 3.x requires its security java agent on the JVM\n  # startup classpath — nixpkgs' opensearch-3 wrapper omits this so\n  # we have to add it ourselves.\n  OPENSEARCH_JAVA_OPTS=\"-Xms512m -Xmx512m\"\n  if [ -f \"$OPENSEARCH_HOME/agent/opensearch-agent.jar\" ]; then\n    OPENSEARCH_JAVA_OPTS=\"-javaagent:$OPENSEARCH_HOME/agent/opensearch-agent.jar $OPENSEARCH_JAVA_OPTS\"\n  fi\n  export OPENSEARCH_JAVA_OPTS\n  # Our config lives under $STATE_DIR/opensearch (see [hook]). Override\n  # OPENSEARCH_HOME's `config` path with OPENSEARCH_PATH_CONF.\n  OPENSEARCH_PATH_CONF=\"$STATE_DIR/opensearch/config\"\n  export OPENSEARCH_PATH_CONF\n  mkdir -p \"$OPENSEARCH_PATH_CONF\"\n  if [ ! -f \"$OPENSEARCH_PATH_CONF/opensearch.yml\" ]; then\n    cat > \"$OPENSEARCH_PATH_CONF/opensearch.yml\" <<EOF\ncluster.name: converge-dev\nnode.name: dev-node\npath.data: $OPENSEARCH_DATA\npath.logs: $OPENSEARCH_LOGS\nnetwork.host: 127.0.0.1\nhttp.port: 9200\ndiscovery.type: single-node\nplugins.security.disabled: true\nEOF\n    cat > \"$OPENSEARCH_PATH_CONF/jvm.options\" <<'EOF'\n-Xms512m\n-Xmx512m\n-XX:+UseG1GC\n-Djava.awt.headless=true\n-Dfile.encoding=UTF-8\nEOF\n    cat > \"$OPENSEARCH_PATH_CONF/log4j2.properties\" <<'EOF'\nstatus = error\nappender.console.type = Console\nappender.console.name = console\nappender.console.layout.type = PatternLayout\nappender.console.layout.pattern = [%d{ISO8601}][%-5p][%-25c{1.}] %marker%m%n\nrootLogger.level = info\nrootLogger.appenderRef.console.ref = console\nEOF\n  fi\n  exec opensearch\n",
+        "is-daemon": false
+      }
+    }
+  },
+  "packages": [
+    {
+      "attr_path": "php82Packages.composer",
+      "broken": false,
+      "derivation": "/nix/store/6ajjlz1fr3avp0x2v1lwlmdgwzprcag4-composer-2.9.7.drv",
+      "description": "Dependency Manager for PHP",
+      "install_id": "composer",
+      "license": "MIT",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "composer-2.9.7",
+      "pname": "composer",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:07:52.415138Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "2.9.7",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/cgmdlqrslir765h06ghwnib40v8wddf3-composer-2.9.7"
+      },
+      "system": "aarch64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Packages.composer",
+      "broken": false,
+      "derivation": "/nix/store/hdpfq90dcc89krpihmlpip5yd1k6mmb8-composer-2.9.7.drv",
+      "description": "Dependency Manager for PHP",
+      "install_id": "composer",
+      "license": "MIT",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "composer-2.9.7",
+      "pname": "composer",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:44:39.963434Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "2.9.7",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/p39h7301a2bvklws5wz7j0w94sdakxfg-composer-2.9.7"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Packages.composer",
+      "broken": false,
+      "derivation": "/nix/store/kli6lckynn549qncv9ngwmnan6mma6vl-composer-2.9.7.drv",
+      "description": "Dependency Manager for PHP",
+      "install_id": "composer",
+      "license": "MIT",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "composer-2.9.7",
+      "pname": "composer",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:16:46.462172Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "2.9.7",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/s4lnh2hf6l4kky6qh7a25h8d4hnkbdxv-composer-2.9.7"
+      },
+      "system": "x86_64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Packages.composer",
+      "broken": false,
+      "derivation": "/nix/store/s3khlr63czc06xlwlirwxlvdz1565zsc-composer-2.9.7.drv",
+      "description": "Dependency Manager for PHP",
+      "install_id": "composer",
+      "license": "MIT",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "composer-2.9.7",
+      "pname": "composer",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:53:19.608462Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "2.9.7",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/pwk06km5i4vaihaiw6a47p9y5ms0azmj-composer-2.9.7"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "git",
+      "broken": false,
+      "derivation": "/nix/store/9n758xnd7s67zz9naiivygz24pv7zpr4-git-2.53.0.drv",
+      "description": "Distributed version control system",
+      "install_id": "git",
+      "license": "GPL-2.0",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "git-2.53.0",
+      "pname": "git",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:07:16.514678Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "2.53.0",
+      "outputs_to_install": [
+        "out",
+        "out"
+      ],
+      "outputs": {
+        "doc": "/nix/store/0kjpgj1grgba239ykdnv1cjc61xqk3aa-git-2.53.0-doc",
+        "out": "/nix/store/5y6cp247hspkqa7pp6cbc4540ygx0249-git-2.53.0"
+      },
+      "system": "aarch64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "git",
+      "broken": false,
+      "derivation": "/nix/store/y0zdc38hb5flnbzx9a8sia7azv917jvc-git-2.53.0.drv",
+      "description": "Distributed version control system",
+      "install_id": "git",
+      "license": "GPL-2.0",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "git-2.53.0",
+      "pname": "git",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:43:45.985160Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "2.53.0",
+      "outputs_to_install": [
+        "out",
+        "out"
+      ],
+      "outputs": {
+        "debug": "/nix/store/rc56a3l2wby94gk9gvirpwi9hv9v15gi-git-2.53.0-debug",
+        "doc": "/nix/store/q8j5mwix1g75xyq025d3hmringklm52z-git-2.53.0-doc",
+        "out": "/nix/store/gx9r7g2kyrjhh0zhgxz91f5nbczxh1ac-git-2.53.0"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "git",
+      "broken": false,
+      "derivation": "/nix/store/mpa3y57ch7a3rz55183a886hq2g4h9wm-git-2.53.0.drv",
+      "description": "Distributed version control system",
+      "install_id": "git",
+      "license": "GPL-2.0",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "git-2.53.0",
+      "pname": "git",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:16:10.426890Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "2.53.0",
+      "outputs_to_install": [
+        "out",
+        "out"
+      ],
+      "outputs": {
+        "doc": "/nix/store/9jcm7zadfi5wsic3kizs4x71a8dqlj83-git-2.53.0-doc",
+        "out": "/nix/store/zar16r8w28c6qjdh3xqnkjcmvjjqwi77-git-2.53.0"
+      },
+      "system": "x86_64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "git",
+      "broken": false,
+      "derivation": "/nix/store/gz2q1wq6ckyphg0q08nq9q93g1a6x561-git-2.53.0.drv",
+      "description": "Distributed version control system",
+      "install_id": "git",
+      "license": "GPL-2.0",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "git-2.53.0",
+      "pname": "git",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:52:24.820969Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "2.53.0",
+      "outputs_to_install": [
+        "out",
+        "out",
+        "out",
+        "out"
+      ],
+      "outputs": {
+        "debug": "/nix/store/qyqya20z59d164d6692hlyb9pkq10ykk-git-2.53.0-debug",
+        "doc": "/nix/store/vv1ap6qaxdzpa4jqg71myxh5wcvnlqv8-git-2.53.0-doc",
+        "out": "/nix/store/c0277k5giric1mn9dklllavbzvxl6hzb-git-2.53.0"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "gnumake",
+      "broken": false,
+      "derivation": "/nix/store/5vqw4w1argiy9damyh49mz4ifkdpvy4s-gnumake-4.4.1.drv",
+      "description": "Tool to control the generation of non-source files from sources",
+      "install_id": "gnumake",
+      "license": "GPL-3.0-or-later",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "gnumake-4.4.1",
+      "pname": "gnumake",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:07:16.636127Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "4.4.1",
+      "outputs_to_install": [
+        "man",
+        "out"
+      ],
+      "outputs": {
+        "doc": "/nix/store/c7l1j109rsygzd1lc3pp2rbfm2p3y642-gnumake-4.4.1-doc",
+        "info": "/nix/store/v9ss50cr4hqvm1c5xhhgb9sgn98gvgd6-gnumake-4.4.1-info",
+        "man": "/nix/store/908rmkli4kdr2706pgax47ph86cpfifh-gnumake-4.4.1-man",
+        "out": "/nix/store/zcbp7z3zaagbm7rpk6hz5zb8qwd40v42-gnumake-4.4.1"
+      },
+      "system": "aarch64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "gnumake",
+      "broken": false,
+      "derivation": "/nix/store/sr606kaxyhx2gn82wl01gbqlq452arwd-gnumake-4.4.1.drv",
+      "description": "Tool to control the generation of non-source files from sources",
+      "install_id": "gnumake",
+      "license": "GPL-3.0-or-later",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "gnumake-4.4.1",
+      "pname": "gnumake",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:43:46.650013Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "4.4.1",
+      "outputs_to_install": [
+        "man",
+        "out"
+      ],
+      "outputs": {
+        "debug": "/nix/store/skri4hsrs5ga3mb2y2zabb86h91kg7yf-gnumake-4.4.1-debug",
+        "doc": "/nix/store/83grbbzidh6mspbq3vcwnv5i2w418f64-gnumake-4.4.1-doc",
+        "info": "/nix/store/pi1waffl6zsh3898x8csg9liwljl1v5b-gnumake-4.4.1-info",
+        "man": "/nix/store/a208sdxbrp4737zrv1lynglgzqj7wjxi-gnumake-4.4.1-man",
+        "out": "/nix/store/y92qq7542dy25bs8ijnrs396n5cvbrvm-gnumake-4.4.1"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "gnumake",
+      "broken": false,
+      "derivation": "/nix/store/zchqhprbkh124pd3vlfynvyyb0i5847q-gnumake-4.4.1.drv",
+      "description": "Tool to control the generation of non-source files from sources",
+      "install_id": "gnumake",
+      "license": "GPL-3.0-or-later",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "gnumake-4.4.1",
+      "pname": "gnumake",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:16:10.572125Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "4.4.1",
+      "outputs_to_install": [
+        "man",
+        "out"
+      ],
+      "outputs": {
+        "doc": "/nix/store/8cga3r53093x6yzzayqqjcd2ip2bb6gc-gnumake-4.4.1-doc",
+        "info": "/nix/store/gdg79wm2j8g86d0vilbmwa6sjvdnwysw-gnumake-4.4.1-info",
+        "man": "/nix/store/4jk8w4gsl2d2vgrpi5c8grcyx5h6k1br-gnumake-4.4.1-man",
+        "out": "/nix/store/4sgv9nplhrys2a88lfxw1swlj7kn4v54-gnumake-4.4.1"
+      },
+      "system": "x86_64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "gnumake",
+      "broken": false,
+      "derivation": "/nix/store/kmx0hfjc7yxlmsqy2lqqqy2w9lh5fhgv-gnumake-4.4.1.drv",
+      "description": "Tool to control the generation of non-source files from sources",
+      "install_id": "gnumake",
+      "license": "GPL-3.0-or-later",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "gnumake-4.4.1",
+      "pname": "gnumake",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:52:25.542301Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "4.4.1",
+      "outputs_to_install": [
+        "man",
+        "out",
+        "out",
+        "out"
+      ],
+      "outputs": {
+        "debug": "/nix/store/72dxkkiz9jh8icb3h55ryi2c40f5rx8f-gnumake-4.4.1-debug",
+        "doc": "/nix/store/4jrq5glppx1pbf9qvzm33j7igm852pbc-gnumake-4.4.1-doc",
+        "info": "/nix/store/jx8cp7ifpjv63q2rqdwby1qq84fs94lk-gnumake-4.4.1-info",
+        "man": "/nix/store/5xxknr9d7fgm7j2pppvh410nh5jjgq72-gnumake-4.4.1-man",
+        "out": "/nix/store/0rn2xh3zciwdr8sjg79ir79dbr6lnmfb-gnumake-4.4.1"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "jq",
+      "broken": false,
+      "derivation": "/nix/store/8m1acd54mxn25zahyn0scbi10a49v91c-jq-1.8.1.drv",
+      "description": "Lightweight and flexible command-line JSON processor",
+      "install_id": "jq",
+      "license": "MIT",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "jq-1.8.1",
+      "pname": "jq",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:07:32.109764Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "1.8.1",
+      "outputs_to_install": [
+        "bin",
+        "bin",
+        "bin",
+        "man",
+        "man"
+      ],
+      "outputs": {
+        "bin": "/nix/store/zpaiv3csv85i5qdhwlivlbg8a5clnqmh-jq-1.8.1-bin",
+        "dev": "/nix/store/h46rnp90pvk5ky12r9drbzhl1fqlmjnf-jq-1.8.1-dev",
+        "doc": "/nix/store/iksz05vk9j78ls9agfg9blhax9azgv69-jq-1.8.1-doc",
+        "man": "/nix/store/vs9rx9xgqachcay4mn95m1gwifzxrhm4-jq-1.8.1-man",
+        "out": "/nix/store/inmyqx7646xrcqrwxipacv5gkf3ca6m3-jq-1.8.1"
+      },
+      "system": "aarch64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "jq",
+      "broken": false,
+      "derivation": "/nix/store/6bm9kiq3c81i6f3hs1qdvk281w8sjk1s-jq-1.8.1.drv",
+      "description": "Lightweight and flexible command-line JSON processor",
+      "install_id": "jq",
+      "license": "MIT",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "jq-1.8.1",
+      "pname": "jq",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:44:06.727213Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "1.8.1",
+      "outputs_to_install": [
+        "bin",
+        "bin",
+        "bin",
+        "man"
+      ],
+      "outputs": {
+        "bin": "/nix/store/blgzs73jx017qji4n78v4wg1qxcg3cav-jq-1.8.1-bin",
+        "dev": "/nix/store/lx675fc624glij1dh9iw89pavkvfkv73-jq-1.8.1-dev",
+        "doc": "/nix/store/r992wf8cylhf9ayxwf64lawdfxcr4cl8-jq-1.8.1-doc",
+        "man": "/nix/store/s8h2klkc7rw485yqj3s73ancc5915v2m-jq-1.8.1-man",
+        "out": "/nix/store/2v9443fs97gdg5mz9lk3q603hryhqijm-jq-1.8.1"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "jq",
+      "broken": false,
+      "derivation": "/nix/store/kma4dqri44q18xcdicm42rh69fvxf2q8-jq-1.8.1.drv",
+      "description": "Lightweight and flexible command-line JSON processor",
+      "install_id": "jq",
+      "license": "MIT",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "jq-1.8.1",
+      "pname": "jq",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:16:26.119933Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "1.8.1",
+      "outputs_to_install": [
+        "bin",
+        "bin",
+        "man"
+      ],
+      "outputs": {
+        "bin": "/nix/store/cpq0n6nrgs7jwyr121qshzk2fvjkmjbh-jq-1.8.1-bin",
+        "dev": "/nix/store/0p7h41icsq99c08sym6iw4wzdsl35r13-jq-1.8.1-dev",
+        "doc": "/nix/store/h6wn2lzbxq1v2dypaj4kpv4nnkkm9yld-jq-1.8.1-doc",
+        "man": "/nix/store/flsm1xvpbr9681y4y8101v5c5m3qmcim-jq-1.8.1-man",
+        "out": "/nix/store/spn7m9y4302yvw9zafpy1g2sz3z9xnx1-jq-1.8.1"
+      },
+      "system": "x86_64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "jq",
+      "broken": false,
+      "derivation": "/nix/store/b7xrk5idxkza33wiaizqzs9fqzvw5lqb-jq-1.8.1.drv",
+      "description": "Lightweight and flexible command-line JSON processor",
+      "install_id": "jq",
+      "license": "MIT",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "jq-1.8.1",
+      "pname": "jq",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:52:45.475523Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "1.8.1",
+      "outputs_to_install": [
+        "bin",
+        "bin",
+        "bin",
+        "bin",
+        "bin",
+        "man"
+      ],
+      "outputs": {
+        "bin": "/nix/store/v5c3inhfq6xshmwg1c254vfbcy4jp3k9-jq-1.8.1-bin",
+        "dev": "/nix/store/p8x5zv9s9qg3ld8b7jdm03hkpdqybjl9-jq-1.8.1-dev",
+        "doc": "/nix/store/g2wlgi44rn837jdirpwi3lk5f2iy13zg-jq-1.8.1-doc",
+        "man": "/nix/store/lsyqny7h1riwhzajwy2vjjdd63viiwvm-jq-1.8.1-man",
+        "out": "/nix/store/09bq2i0kb008ccg3qdbyxv81ggxxnn09-jq-1.8.1"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "mariadb_106",
+      "broken": false,
+      "derivation": "/nix/store/b0pw41381mpqpz65sygbzkrhzg1f3xhj-mariadb-server-10.6.24.drv",
+      "description": "Enhanced, drop-in replacement for MySQL",
+      "install_id": "mariadb",
+      "license": "GPL-2.0-or-later",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "mariadb-server-10.6.24",
+      "pname": "mariadb_106",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:07:37.480383Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "10.6.24",
+      "outputs_to_install": [
+        "man",
+        "out"
+      ],
+      "outputs": {
+        "man": "/nix/store/ijvjjacl90ggzrkd6xxpmlbibd32wyin-mariadb-server-10.6.24-man",
+        "out": "/nix/store/pjszg74w6zccaxw5mhv9s84srll18xkr-mariadb-server-10.6.24"
+      },
+      "system": "aarch64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "mariadb_106",
+      "broken": false,
+      "derivation": "/nix/store/zmsma8iwk7hzfa1llx84mgzkvjjf1a84-mariadb-server-10.6.24.drv",
+      "description": "Enhanced, drop-in replacement for MySQL",
+      "install_id": "mariadb",
+      "license": "GPL-2.0-or-later",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "mariadb-server-10.6.24",
+      "pname": "mariadb_106",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:44:18.754342Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "10.6.24",
+      "outputs_to_install": [
+        "man",
+        "out"
+      ],
+      "outputs": {
+        "man": "/nix/store/k0z838nyamz5a3rf3bx35v4r1w8zlzhd-mariadb-server-10.6.24-man",
+        "out": "/nix/store/g3ri1wqy5wha3idk3nlkx36y4nax98xv-mariadb-server-10.6.24"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "mariadb_106",
+      "broken": false,
+      "derivation": "/nix/store/idf3m1c69c2c7m2njlv02wmnbx0d1i7k-mariadb-server-10.6.24.drv",
+      "description": "Enhanced, drop-in replacement for MySQL",
+      "install_id": "mariadb",
+      "license": "GPL-2.0-or-later",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "mariadb-server-10.6.24",
+      "pname": "mariadb_106",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:16:31.401746Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "10.6.24",
+      "outputs_to_install": [
+        "man",
+        "out"
+      ],
+      "outputs": {
+        "man": "/nix/store/9czka72a8m3clavphll4wl35fk6lhrzm-mariadb-server-10.6.24-man",
+        "out": "/nix/store/cpqpnmcm77y3pzyncz29pyivsaawnzyn-mariadb-server-10.6.24"
+      },
+      "system": "x86_64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "mariadb_106",
+      "broken": false,
+      "derivation": "/nix/store/05x8j3bw6vnmnbmqxfbf5nrbf2mlf9ah-mariadb-server-10.6.24.drv",
+      "description": "Enhanced, drop-in replacement for MySQL",
+      "install_id": "mariadb",
+      "license": "GPL-2.0-or-later",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "mariadb-server-10.6.24",
+      "pname": "mariadb_106",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:52:58.244174Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "10.6.24",
+      "outputs_to_install": [
+        "man",
+        "out"
+      ],
+      "outputs": {
+        "man": "/nix/store/h23z23wlbvk1sydr5a2zjij9j1ns36d1-mariadb-server-10.6.24-man",
+        "out": "/nix/store/lz41zhslzc9f959y83x0vxzbfkg9gh7a-mariadb-server-10.6.24"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "nodejs_20",
+      "broken": false,
+      "derivation": "/nix/store/006ypn0684pqvw66cvgly193vn8w9rz0-nodejs-20.20.2.drv",
+      "description": "Event-driven I/O framework for the V8 JavaScript engine",
+      "install_id": "nodejs",
+      "license": "MIT",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "nodejs-20.20.2",
+      "pname": "nodejs_20",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:07:39.836208Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "20.20.2",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/gvr230jrjzznrhlmfymjj37x0dx3srvv-nodejs-20.20.2"
+      },
+      "system": "aarch64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "nodejs_20",
+      "broken": false,
+      "derivation": "/nix/store/azxca3z9184bw7h0mn5p7s7vd41i966a-nodejs-20.20.2.drv",
+      "description": "Event-driven I/O framework for the V8 JavaScript engine",
+      "install_id": "nodejs",
+      "license": "MIT",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "nodejs-20.20.2",
+      "pname": "nodejs_20",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:44:22.687991Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "20.20.2",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/jx5whkya850cy6a1fjf74p5dfqlcp1cq-nodejs-20.20.2"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "nodejs_20",
+      "broken": false,
+      "derivation": "/nix/store/5zzbi87r5rln2sdjrl07wkr2yss6nbyv-nodejs-20.20.2.drv",
+      "description": "Event-driven I/O framework for the V8 JavaScript engine",
+      "install_id": "nodejs",
+      "license": "MIT",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "nodejs-20.20.2",
+      "pname": "nodejs_20",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:16:33.774500Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "20.20.2",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/ggqdy8b4b62gr1ak2v41dka5s1dmflzk-nodejs-20.20.2"
+      },
+      "system": "x86_64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "nodejs_20",
+      "broken": false,
+      "derivation": "/nix/store/d4szbwjarvpvg2dgxmch851mvi2a78mq-nodejs-20.20.2.drv",
+      "description": "Event-driven I/O framework for the V8 JavaScript engine",
+      "install_id": "nodejs",
+      "license": "MIT",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "nodejs-20.20.2",
+      "pname": "nodejs_20",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:53:02.381794Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "20.20.2",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/nr0dnrnibq8114xa0i7zr7qg6n05q03g-nodejs-20.20.2"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "opensearch",
+      "broken": false,
+      "derivation": "/nix/store/zhd826adbw700k9c6dh02l4mwl2s0y0a-opensearch-3.5.0.drv",
+      "description": "Open Source, Distributed, RESTful Search Engine",
+      "install_id": "opensearch",
+      "license": "Apache-2.0",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "opensearch-3.5.0",
+      "pname": "opensearch",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:07:44.835287Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "3.5.0",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/y2kh13i1m0ic472h6g5wq4qx0g5xqp78-opensearch-3.5.0"
+      },
+      "system": "aarch64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "opensearch",
+      "broken": false,
+      "derivation": "/nix/store/hfrikny2ldijc6m57zs2xj2akr9hyw42-opensearch-3.5.0.drv",
+      "description": "Open Source, Distributed, RESTful Search Engine",
+      "install_id": "opensearch",
+      "license": "Apache-2.0",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "opensearch-3.5.0",
+      "pname": "opensearch",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:44:29.581632Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "3.5.0",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/0zk49j67g7d1q6z9sgrr1p0agziw8cw4-opensearch-3.5.0"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "opensearch",
+      "broken": false,
+      "derivation": "/nix/store/3p9db96lwlpldw8y6hfqzgm3bq48khvb-opensearch-3.5.0.drv",
+      "description": "Open Source, Distributed, RESTful Search Engine",
+      "install_id": "opensearch",
+      "license": "Apache-2.0",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "opensearch-3.5.0",
+      "pname": "opensearch",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:16:38.846611Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "3.5.0",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/513pvw92519pf05fyjpzdaa27im7hhs2-opensearch-3.5.0"
+      },
+      "system": "x86_64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "opensearch",
+      "broken": false,
+      "derivation": "/nix/store/q1pw7ai115zaczsbapkfc019dlpxy8l8-opensearch-3.5.0.drv",
+      "description": "Open Source, Distributed, RESTful Search Engine",
+      "install_id": "opensearch",
+      "license": "Apache-2.0",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "opensearch-3.5.0",
+      "pname": "opensearch",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:53:09.405548Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "3.5.0",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/izfnzw0mmnx9206jk6g4d75iwg8mwvn5-opensearch-3.5.0"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82",
+      "broken": false,
+      "derivation": "/nix/store/lgmm2p2362zpiyvcb03101aid84snbfc-php-with-extensions-8.2.30.drv",
+      "description": "HTML-embedded scripting language",
+      "install_id": "php82",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-with-extensions-8.2.30",
+      "pname": "php82",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:07:52.227874Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/cc413akkj1n55w337jd1y7sf11nmgjnw-php-with-extensions-8.2.30"
+      },
+      "system": "aarch64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82",
+      "broken": false,
+      "derivation": "/nix/store/5giamkb7603ga17wj1lky8vj8zwr1ldg-php-with-extensions-8.2.30.drv",
+      "description": "HTML-embedded scripting language",
+      "install_id": "php82",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-with-extensions-8.2.30",
+      "pname": "php82",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:44:39.706854Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/0y2rj25lnq4zq5q4ix8c82r52qrlkqsl-php-with-extensions-8.2.30"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82",
+      "broken": false,
+      "derivation": "/nix/store/s48n0x3dxg8s6kljjm3fny0nj64v8974-php-with-extensions-8.2.30.drv",
+      "description": "HTML-embedded scripting language",
+      "install_id": "php82",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-with-extensions-8.2.30",
+      "pname": "php82",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:16:46.280707Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/jnjhqnqffysw5m9xh169n9s4lrckmc8m-php-with-extensions-8.2.30"
+      },
+      "system": "x86_64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82",
+      "broken": false,
+      "derivation": "/nix/store/7mh5a6isgysdggy46dl7w3p824fjv9p2-php-with-extensions-8.2.30.drv",
+      "description": "HTML-embedded scripting language",
+      "install_id": "php82",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-with-extensions-8.2.30",
+      "pname": "php82",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:53:19.356512Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/y18zghqdy7lmpcp1wy64zjwnlirlp13y-php-with-extensions-8.2.30"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.bcmath",
+      "broken": false,
+      "derivation": "/nix/store/jx9lrs2fdlgc6k3cm9kak1w3faq9by37-php-bcmath-8.2.30.drv",
+      "description": "PHP upstream extension: bcmath",
+      "install_id": "php82Extensions-bcmath",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-bcmath-8.2.30",
+      "pname": "bcmath",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:07:52.234619Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/m4whp8vfyv1q980cncs6yfz5jxq73brv-php-bcmath-8.2.30-dev",
+        "out": "/nix/store/xrx7xijcdxknbgwmvg8w0175iyv0mgk6-php-bcmath-8.2.30"
+      },
+      "system": "aarch64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.bcmath",
+      "broken": false,
+      "derivation": "/nix/store/5178sami9i5qnvwzvj5x3synwg1had6p-php-bcmath-8.2.30.drv",
+      "description": "PHP upstream extension: bcmath",
+      "install_id": "php82Extensions-bcmath",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-bcmath-8.2.30",
+      "pname": "bcmath",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:44:39.715305Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/7is536n1vgx2x0nk8rclr8anjqsgx93d-php-bcmath-8.2.30-dev",
+        "out": "/nix/store/qbk5hgyxvc797gyygcnafwya448m0jky-php-bcmath-8.2.30"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.bcmath",
+      "broken": false,
+      "derivation": "/nix/store/1jdhli1pkyrv5m1i04cqmjny6823bkk6-php-bcmath-8.2.30.drv",
+      "description": "PHP upstream extension: bcmath",
+      "install_id": "php82Extensions-bcmath",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-bcmath-8.2.30",
+      "pname": "bcmath",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:16:46.287649Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/kcd56wap7p3zyqdkrphibssli07q3wxh-php-bcmath-8.2.30-dev",
+        "out": "/nix/store/lz8fw2pmvs1q8m0v9jpwdyj7y5ggp0rf-php-bcmath-8.2.30"
+      },
+      "system": "x86_64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.bcmath",
+      "broken": false,
+      "derivation": "/nix/store/byij90qsl4jp8jfg1aqg52px7ixvmkhk-php-bcmath-8.2.30.drv",
+      "description": "PHP upstream extension: bcmath",
+      "install_id": "php82Extensions-bcmath",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-bcmath-8.2.30",
+      "pname": "bcmath",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:53:19.364920Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/k1k4ni69767cvq525g7jdw6xxb61rvgz-php-bcmath-8.2.30-dev",
+        "out": "/nix/store/61m6pkj8qk2y4i3xnw1p9h3rg312vs97-php-bcmath-8.2.30"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.gd",
+      "broken": false,
+      "derivation": "/nix/store/my3jyfx076jrmb4wrv7cy6wi4gg4i9sb-php-gd-8.2.30.drv",
+      "description": "PHP upstream extension: gd",
+      "install_id": "php82Extensions-gd",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-gd-8.2.30",
+      "pname": "gd",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:07:52.269088Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/icy7cwf27gg8a9dmzmkipnxkakdj5k4c-php-gd-8.2.30-dev",
+        "out": "/nix/store/zsw2lad11gklanscv1ghphm4yvrghyml-php-gd-8.2.30"
+      },
+      "system": "aarch64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.gd",
+      "broken": false,
+      "derivation": "/nix/store/wpc7iis44jhg7rcnclvc9bn56zxbfixz-php-gd-8.2.30.drv",
+      "description": "PHP upstream extension: gd",
+      "install_id": "php82Extensions-gd",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-gd-8.2.30",
+      "pname": "gd",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:44:39.759618Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/ymfqh9wnigk3xg0qqchbjp9cdk917qdg-php-gd-8.2.30-dev",
+        "out": "/nix/store/rd3bhr3i2pcnc7sbv3jkk51b81pbnfc1-php-gd-8.2.30"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.gd",
+      "broken": false,
+      "derivation": "/nix/store/q33kbwiw1hrn5gf9lilskmcg9acn7nm6-php-gd-8.2.30.drv",
+      "description": "PHP upstream extension: gd",
+      "install_id": "php82Extensions-gd",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-gd-8.2.30",
+      "pname": "gd",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:16:46.322147Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/ij6hd91k43nawvbn2wpb1hiqr9sgg0lr-php-gd-8.2.30-dev",
+        "out": "/nix/store/7gj925plkz16h8nky0w7rnhdba014kbs-php-gd-8.2.30"
+      },
+      "system": "x86_64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.gd",
+      "broken": false,
+      "derivation": "/nix/store/brw19lqn1l0x4rmp527vdka4cg3v85lf-php-gd-8.2.30.drv",
+      "description": "PHP upstream extension: gd",
+      "install_id": "php82Extensions-gd",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-gd-8.2.30",
+      "pname": "gd",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:53:19.407086Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/mjn3zksljgyv8dg8id3kcdhdgxvg175m-php-gd-8.2.30-dev",
+        "out": "/nix/store/ca3lih9xns92bznn4zd4dcj72blca41j-php-gd-8.2.30"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.intl",
+      "broken": false,
+      "derivation": "/nix/store/229dzlf3kqxwz0jywg0nqczzcsh5p5l2-php-intl-8.2.30.drv",
+      "description": "PHP upstream extension: intl",
+      "install_id": "php82Extensions-intl",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-intl-8.2.30",
+      "pname": "intl",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:07:52.284317Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/2xri89wc085h5x01228q13srg9dchmvw-php-intl-8.2.30-dev",
+        "out": "/nix/store/bcirvasq7yrhc6pimpm6icfa34kdwzxl-php-intl-8.2.30"
+      },
+      "system": "aarch64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.intl",
+      "broken": false,
+      "derivation": "/nix/store/ck5ds3ci4v0c9g5b4pvhmd3b72y9m8i7-php-intl-8.2.30.drv",
+      "description": "PHP upstream extension: intl",
+      "install_id": "php82Extensions-intl",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-intl-8.2.30",
+      "pname": "intl",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:44:39.783604Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/4sgiwvlm6dk4mm66r0i57v6nvl13laj6-php-intl-8.2.30-dev",
+        "out": "/nix/store/4d2wamv0mhqiy8wap4rzw83x9a9sgid2-php-intl-8.2.30"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.intl",
+      "broken": false,
+      "derivation": "/nix/store/2xzcl0ayg8m7jw2bj12rwgbdmlr4wlcy-php-intl-8.2.30.drv",
+      "description": "PHP upstream extension: intl",
+      "install_id": "php82Extensions-intl",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-intl-8.2.30",
+      "pname": "intl",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:16:46.337443Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/0fccrkar974i1385q07n3wi77sws6g57-php-intl-8.2.30-dev",
+        "out": "/nix/store/31cbxn4hr1f6scs2ld96lwx589410nrd-php-intl-8.2.30"
+      },
+      "system": "x86_64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.intl",
+      "broken": false,
+      "derivation": "/nix/store/632zmly98c0xff23xjxjl1v297l04vpd-php-intl-8.2.30.drv",
+      "description": "PHP upstream extension: intl",
+      "install_id": "php82Extensions-intl",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-intl-8.2.30",
+      "pname": "intl",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:53:19.427993Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/vxh81337qmam119xd8rvqmmz1l0x10k3-php-intl-8.2.30-dev",
+        "out": "/nix/store/a5240kzqvad2mfa1wqifgcawbn5ka68m-php-intl-8.2.30"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.mysqli",
+      "broken": false,
+      "derivation": "/nix/store/wgnr7k28qk2l7sv6savx8gscj3y04xsm-php-mysqli-8.2.30.drv",
+      "description": "PHP upstream extension: mysqli",
+      "install_id": "php82Extensions-mysqli",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-mysqli-8.2.30",
+      "pname": "mysqli",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:07:52.304826Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/x9jji2jgj98w5qp1asqixn6zf8km67c8-php-mysqli-8.2.30-dev",
+        "out": "/nix/store/b8aaw92xyiplyhiymswb21cp56qdqicm-php-mysqli-8.2.30"
+      },
+      "system": "aarch64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.mysqli",
+      "broken": false,
+      "derivation": "/nix/store/2i155qqrmfz1cgvbijk67aby9jmsm10l-php-mysqli-8.2.30.drv",
+      "description": "PHP upstream extension: mysqli",
+      "install_id": "php82Extensions-mysqli",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-mysqli-8.2.30",
+      "pname": "mysqli",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:44:39.811169Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/z9ihrdn7pvx7pjscj5vjv24nkrndxgbv-php-mysqli-8.2.30-dev",
+        "out": "/nix/store/66xs1gf4bav31b0l97qizpwpp21grgyb-php-mysqli-8.2.30"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.mysqli",
+      "broken": false,
+      "derivation": "/nix/store/iprx4cb2p8c9fck7qxk101yiwc9gd1v8-php-mysqli-8.2.30.drv",
+      "description": "PHP upstream extension: mysqli",
+      "install_id": "php82Extensions-mysqli",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-mysqli-8.2.30",
+      "pname": "mysqli",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:16:46.356316Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/r655h0whpy78jp8n49qgr9ar2jg1jrnm-php-mysqli-8.2.30-dev",
+        "out": "/nix/store/i9i5w01lrcjjswr0cpwd7c71hi1h0779-php-mysqli-8.2.30"
+      },
+      "system": "x86_64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.mysqli",
+      "broken": false,
+      "derivation": "/nix/store/ya1piqahhnb5jpy4lz10flc9c0afjvzn-php-mysqli-8.2.30.drv",
+      "description": "PHP upstream extension: mysqli",
+      "install_id": "php82Extensions-mysqli",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-mysqli-8.2.30",
+      "pname": "mysqli",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:53:19.455914Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/g93djygyqnfs7xqnkr0d3cx6n0c413dy-php-mysqli-8.2.30-dev",
+        "out": "/nix/store/xx0lqplz73l9qpygxgjfbxi7lqdi4xwb-php-mysqli-8.2.30"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.opcache",
+      "broken": false,
+      "derivation": "/nix/store/8l7pbvbp2y7x4rw6jkhzrrzg0zvrxgbp-php-opcache-8.2.30.drv",
+      "description": "PHP upstream extension: opcache",
+      "install_id": "php82Extensions-opcache",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-opcache-8.2.30",
+      "pname": "opcache",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:07:52.310069Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/vv1v5xdiwsw7cfq7mx61vxmz4p4qz7xy-php-opcache-8.2.30-dev",
+        "out": "/nix/store/cbqzm381w0vsb441197is9dgrzll0mjr-php-opcache-8.2.30"
+      },
+      "system": "aarch64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.opcache",
+      "broken": false,
+      "derivation": "/nix/store/3p1pz9iyngn29dvv2rry4f4fa3m2h5rh-php-opcache-8.2.30.drv",
+      "description": "PHP upstream extension: opcache",
+      "install_id": "php82Extensions-opcache",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-opcache-8.2.30",
+      "pname": "opcache",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:44:39.817474Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/z0z0mvi7pa5hz7ns3azh08790j3ysvqx-php-opcache-8.2.30-dev",
+        "out": "/nix/store/wjvb0sxldiqqj7b4nzav5znc8c3fzl2s-php-opcache-8.2.30"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.opcache",
+      "broken": false,
+      "derivation": "/nix/store/6w1q19sydb8jji7ba4qmdamlvzm5qna0-php-opcache-8.2.30.drv",
+      "description": "PHP upstream extension: opcache",
+      "install_id": "php82Extensions-opcache",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-opcache-8.2.30",
+      "pname": "opcache",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:16:46.361318Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/9nbrnpd46xq1vp2ircbapphq6zyn68bs-php-opcache-8.2.30-dev",
+        "out": "/nix/store/lgw79zrgrrv6n7g4mscncll8qm79a6ka-php-opcache-8.2.30"
+      },
+      "system": "x86_64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.opcache",
+      "broken": false,
+      "derivation": "/nix/store/rif6mpx4cqz2cpfmn4yjvc7hgwcmaj20-php-opcache-8.2.30.drv",
+      "description": "PHP upstream extension: opcache",
+      "install_id": "php82Extensions-opcache",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-opcache-8.2.30",
+      "pname": "opcache",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:53:19.462407Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/vjlhchfpz69gjh16xzd52az6sdl84vb5-php-opcache-8.2.30-dev",
+        "out": "/nix/store/i58yz3vlxpwlzyz10l4srwnvfhg6kb6l-php-opcache-8.2.30"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.pdo_mysql",
+      "broken": false,
+      "derivation": "/nix/store/fg4bgs2nsfbn4l0adgmvx3ysmaxdwxcf-php-pdo_mysql-8.2.30.drv",
+      "description": "PHP upstream extension: pdo_mysql",
+      "install_id": "php82Extensions-pdo_mysql",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-pdo_mysql-8.2.30",
+      "pname": "pdo_mysql",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:07:52.327504Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/r7c4mlczmc7c8j4ny40gcfjykypd2cd1-php-pdo_mysql-8.2.30-dev",
+        "out": "/nix/store/jfq51j8629rq0vns11rh7rjg6chgin9x-php-pdo_mysql-8.2.30"
+      },
+      "system": "aarch64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.pdo_mysql",
+      "broken": false,
+      "derivation": "/nix/store/xw0nbjmv227ga187shr3q41kf70bf2f1-php-pdo_mysql-8.2.30.drv",
+      "description": "PHP upstream extension: pdo_mysql",
+      "install_id": "php82Extensions-pdo_mysql",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-pdo_mysql-8.2.30",
+      "pname": "pdo_mysql",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:44:39.841052Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/cbwxr639fhcj5dalciawalfvvbvla642-php-pdo_mysql-8.2.30-dev",
+        "out": "/nix/store/slhw5icv1h4a2jb8f1qgn6ikabyh5vzk-php-pdo_mysql-8.2.30"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.pdo_mysql",
+      "broken": false,
+      "derivation": "/nix/store/1mwh7mf2gxfcj8jlb0plcsprzg3l83v1-php-pdo_mysql-8.2.30.drv",
+      "description": "PHP upstream extension: pdo_mysql",
+      "install_id": "php82Extensions-pdo_mysql",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-pdo_mysql-8.2.30",
+      "pname": "pdo_mysql",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:16:46.378866Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/ba9b9iky9xlcrhangf135fhyc4dx2cm6-php-pdo_mysql-8.2.30-dev",
+        "out": "/nix/store/vqjy9571ag9m2vzra9ij0m9awq0ai19i-php-pdo_mysql-8.2.30"
+      },
+      "system": "x86_64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.pdo_mysql",
+      "broken": false,
+      "derivation": "/nix/store/njwzxx6c943y9msxgzby7mbnsd875nip-php-pdo_mysql-8.2.30.drv",
+      "description": "PHP upstream extension: pdo_mysql",
+      "install_id": "php82Extensions-pdo_mysql",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-pdo_mysql-8.2.30",
+      "pname": "pdo_mysql",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:53:19.486704Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/sdj2ycadg0zsywsg20ch7ckzrp9a1fzr-php-pdo_mysql-8.2.30-dev",
+        "out": "/nix/store/hhx5cvwcfj3afhax9rnxlb1rl2vyilfd-php-pdo_mysql-8.2.30"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.soap",
+      "broken": false,
+      "derivation": "/nix/store/9gllq2q5wkrrsmr959mgcqpyw9jl6q5g-php-soap-8.2.30.drv",
+      "description": "PHP upstream extension: soap",
+      "install_id": "php82Extensions-soap",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-soap-8.2.30",
+      "pname": "soap",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:07:52.367765Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/b6p9sj62v4mr5f55bv1c1xgr1fvh1s0q-php-soap-8.2.30-dev",
+        "out": "/nix/store/xrxg7a5jid3slvmd8l27gifq31nb2h9d-php-soap-8.2.30"
+      },
+      "system": "aarch64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.soap",
+      "broken": false,
+      "derivation": "/nix/store/y49b7rcqnj9zqv55nhna01skz4hwpmdv-php-soap-8.2.30.drv",
+      "description": "PHP upstream extension: soap",
+      "install_id": "php82Extensions-soap",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-soap-8.2.30",
+      "pname": "soap",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:44:39.894764Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/9pfx8q4ncg9zc7gcl1vhvm7lkgwagjfs-php-soap-8.2.30-dev",
+        "out": "/nix/store/p5zxypainzsmnrjq814vv8rb82s1j74j-php-soap-8.2.30"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.soap",
+      "broken": false,
+      "derivation": "/nix/store/j8yiyiwxjp7ajdry87h7ynq20vf0jq6x-php-soap-8.2.30.drv",
+      "description": "PHP upstream extension: soap",
+      "install_id": "php82Extensions-soap",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-soap-8.2.30",
+      "pname": "soap",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:16:46.416335Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/6ksqn8078s0s92d98c37rwvggl5l06mc-php-soap-8.2.30-dev",
+        "out": "/nix/store/1b5zgirjk9qhm8a6b5db384vnczkkzrx-php-soap-8.2.30"
+      },
+      "system": "x86_64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.soap",
+      "broken": false,
+      "derivation": "/nix/store/4s5z56kb3xd7ij7dgpxasmz9v8ll79j4-php-soap-8.2.30.drv",
+      "description": "PHP upstream extension: soap",
+      "install_id": "php82Extensions-soap",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-soap-8.2.30",
+      "pname": "soap",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:53:19.541197Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/dy2izgki9jdbrp9dmwcya1l4wn6ms4nd-php-soap-8.2.30-dev",
+        "out": "/nix/store/x6zvb2baii2gwza1xa6y6j2r5czqidd6-php-soap-8.2.30"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.sockets",
+      "broken": false,
+      "derivation": "/nix/store/8ycc1yk6waf7i1ml7ishmn257yjzgbwi-php-sockets-8.2.30.drv",
+      "description": "PHP upstream extension: sockets",
+      "install_id": "php82Extensions-sockets",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-sockets-8.2.30",
+      "pname": "sockets",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:07:52.369421Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/hjxfvk16h3dbjw0xhimwa071lzpmhz47-php-sockets-8.2.30-dev",
+        "out": "/nix/store/lgj1ny631545ls9hm5vf0wq72lcq63rd-php-sockets-8.2.30"
+      },
+      "system": "aarch64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.sockets",
+      "broken": false,
+      "derivation": "/nix/store/ygqqfgjnh341flmgi8f5z5gidvjzknv9-php-sockets-8.2.30.drv",
+      "description": "PHP upstream extension: sockets",
+      "install_id": "php82Extensions-sockets",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-sockets-8.2.30",
+      "pname": "sockets",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:44:39.897002Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/zhk0npy6il2rcsl7b64dcwirsw9p2mmw-php-sockets-8.2.30-dev",
+        "out": "/nix/store/81mflsmiab6g5qrwcrccnbzg7m7lvrgj-php-sockets-8.2.30"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.sockets",
+      "broken": false,
+      "derivation": "/nix/store/412q0w6v10i029lhlz1dbzh618vr457r-php-sockets-8.2.30.drv",
+      "description": "PHP upstream extension: sockets",
+      "install_id": "php82Extensions-sockets",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-sockets-8.2.30",
+      "pname": "sockets",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:16:46.418005Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/6jx7aww1df0rv4qbp38lymqzlgbw39j2-php-sockets-8.2.30-dev",
+        "out": "/nix/store/m29has6q7cs7cp9hsrrk49i6z4d4s7c4-php-sockets-8.2.30"
+      },
+      "system": "x86_64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.sockets",
+      "broken": false,
+      "derivation": "/nix/store/51yirmkdjzcjd6f3yga1kllb7pnzl4l1-php-sockets-8.2.30.drv",
+      "description": "PHP upstream extension: sockets",
+      "install_id": "php82Extensions-sockets",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-sockets-8.2.30",
+      "pname": "sockets",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:53:19.543512Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/nc94kbyz9gk1b97x6ykn9b15g1604jx4-php-sockets-8.2.30-dev",
+        "out": "/nix/store/vxm8hzk8cvn6d7b0y6w2p6jhxpybjnr2-php-sockets-8.2.30"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.xdebug",
+      "broken": false,
+      "derivation": "/nix/store/spq1kcwa34bqqhh0y2zlp5g30gxpp7hi-php-xdebug-3.5.1.drv",
+      "description": "Provides functions for function traces and profiling",
+      "install_id": "php82Extensions-xdebug",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-xdebug-3.5.1",
+      "pname": "xdebug",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:07:52.394849Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "3.5.1",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/6nk8vfzvvvcxmlkjgsbn1h595vh98iaw-php-xdebug-3.5.1"
+      },
+      "system": "aarch64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.xdebug",
+      "broken": false,
+      "derivation": "/nix/store/hrg6ihdln6c8yddgap3dv39ic6pmrbpq-php-xdebug-3.5.1.drv",
+      "description": "Provides functions for function traces and profiling",
+      "install_id": "php82Extensions-xdebug",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-xdebug-3.5.1",
+      "pname": "xdebug",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:44:39.936917Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "3.5.1",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/h22919xqmm999axb8kf21v5h46gnj18c-php-xdebug-3.5.1"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.xdebug",
+      "broken": false,
+      "derivation": "/nix/store/x1gaiqskgawd5bk0yjvmkx0ksfh4msm0-php-xdebug-3.5.1.drv",
+      "description": "Provides functions for function traces and profiling",
+      "install_id": "php82Extensions-xdebug",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-xdebug-3.5.1",
+      "pname": "xdebug",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:16:46.441900Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "3.5.1",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/qd39by0yzggrhhjkb4kq9wcgy3lzf5qz-php-xdebug-3.5.1"
+      },
+      "system": "x86_64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.xdebug",
+      "broken": false,
+      "derivation": "/nix/store/m7s4gry9m9b0vhr68liv3hcdjbkyyrz4-php-xdebug-3.5.1.drv",
+      "description": "Provides functions for function traces and profiling",
+      "install_id": "php82Extensions-xdebug",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-xdebug-3.5.1",
+      "pname": "xdebug",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:53:19.582504Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "3.5.1",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/kdncvj88x5fcs7gh6zp2qkqa4xg5p4ha-php-xdebug-3.5.1"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.xsl",
+      "broken": false,
+      "derivation": "/nix/store/938q3ilimyzc11ywpkkzy3lilpwq389c-php-xsl-8.2.30.drv",
+      "description": "PHP upstream extension: xsl",
+      "install_id": "php82Extensions-xsl",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-xsl-8.2.30",
+      "pname": "xsl",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:07:52.401622Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/4wz1cpgxlcssi0vzhckn346wm7sm43ib-php-xsl-8.2.30-dev",
+        "out": "/nix/store/ax0gz9x026wdgvz3b2r9mhiqk2rfv8wk-php-xsl-8.2.30"
+      },
+      "system": "aarch64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.xsl",
+      "broken": false,
+      "derivation": "/nix/store/zqf6lgxp9kh5kn6dwgq2km9njvaiylqk-php-xsl-8.2.30.drv",
+      "description": "PHP upstream extension: xsl",
+      "install_id": "php82Extensions-xsl",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-xsl-8.2.30",
+      "pname": "xsl",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:44:39.946426Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/5wxc2sb6wmgzih01rbwvrbv7ja1r4yp3-php-xsl-8.2.30-dev",
+        "out": "/nix/store/rknl8pryvc8516zd0g2axv7f915967vy-php-xsl-8.2.30"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.xsl",
+      "broken": false,
+      "derivation": "/nix/store/swv7hd2avy8bm3sv0f5llk4y4y6fdp2h-php-xsl-8.2.30.drv",
+      "description": "PHP upstream extension: xsl",
+      "install_id": "php82Extensions-xsl",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-xsl-8.2.30",
+      "pname": "xsl",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:16:46.448696Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/l971yq7l2p55izh8nxq0cfpy5f489mfd-php-xsl-8.2.30-dev",
+        "out": "/nix/store/1shq4c3cjq5ijidi7i1g6qrxwaz1lky8-php-xsl-8.2.30"
+      },
+      "system": "x86_64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.xsl",
+      "broken": false,
+      "derivation": "/nix/store/6f2g2jk5p0vh829zjb9xp9bbzmn50azj-php-xsl-8.2.30.drv",
+      "description": "PHP upstream extension: xsl",
+      "install_id": "php82Extensions-xsl",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-xsl-8.2.30",
+      "pname": "xsl",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:53:19.590957Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/g60i0zfbh6lz36mwd7jkgfm43z0wqbnh-php-xsl-8.2.30-dev",
+        "out": "/nix/store/8v3h80lbvk5w277rkvf1rfc2gahdlzpv-php-xsl-8.2.30"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.zip",
+      "broken": false,
+      "derivation": "/nix/store/jvkrv0cf9ji2h5xpnwgmwfrhylgjvk5b-php-zip-8.2.30.drv",
+      "description": "PHP upstream extension: zip",
+      "install_id": "php82Extensions-zip",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-zip-8.2.30",
+      "pname": "zip",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:07:52.406700Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/3yymxy0rzg330rqz36drl2ybkhpxjqrd-php-zip-8.2.30-dev",
+        "out": "/nix/store/a3hdg44gw3lybbkdg9nqifnvfzxyfamd-php-zip-8.2.30"
+      },
+      "system": "aarch64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.zip",
+      "broken": false,
+      "derivation": "/nix/store/s8pz0y223cz6gxragcn353mm9kmil92i-php-zip-8.2.30.drv",
+      "description": "PHP upstream extension: zip",
+      "install_id": "php82Extensions-zip",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-zip-8.2.30",
+      "pname": "zip",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:44:39.952874Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/nrf6n7j78w8n30zf8ds04nl240dfls38-php-zip-8.2.30-dev",
+        "out": "/nix/store/7vsixd6ympml6k1329lhv7d72ma6blc3-php-zip-8.2.30"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.zip",
+      "broken": false,
+      "derivation": "/nix/store/9j5yk38z4qhq9cl7n0sw3rys5d0gljhz-php-zip-8.2.30.drv",
+      "description": "PHP upstream extension: zip",
+      "install_id": "php82Extensions-zip",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-zip-8.2.30",
+      "pname": "zip",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:16:46.453752Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/wsl6z8an8nwk6cwgsljpyqmj34l89n33-php-zip-8.2.30-dev",
+        "out": "/nix/store/mawqqy7zx8lq68hd25sz1frqwp9apmw9-php-zip-8.2.30"
+      },
+      "system": "x86_64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "php82Extensions.zip",
+      "broken": false,
+      "derivation": "/nix/store/0zx1s5hlzi151az3z8azska2z69jm02a-php-zip-8.2.30.drv",
+      "description": "PHP upstream extension: zip",
+      "install_id": "php82Extensions-zip",
+      "license": "PHP-3.01",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "php-zip-8.2.30",
+      "pname": "zip",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:53:19.597786Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "8.2.30",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/f4ha83fn3lqnaqp65lmajifnqx7j10cm-php-zip-8.2.30-dev",
+        "out": "/nix/store/zf2j53nyy8pf87m985r6cby0yz3fc8nc-php-zip-8.2.30"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "unzip",
+      "broken": false,
+      "derivation": "/nix/store/z02kcc7f2c41rcki506bvjsbka4fskcb-unzip-6.0.drv",
+      "description": "Extraction utility for archives compressed in .zip format",
+      "install_id": "unzip",
+      "license": "Info-ZIP",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "unzip-6.0",
+      "pname": "unzip",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:09:48.930974Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "6.0",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/gvs5ahxqw2qhda5iz3mkkqf5vwdiag95-unzip-6.0"
+      },
+      "system": "aarch64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "unzip",
+      "broken": false,
+      "derivation": "/nix/store/m4r0zb7r8yl1l8srblliaq89gi57kbla-unzip-6.0.drv",
+      "description": "Extraction utility for archives compressed in .zip format",
+      "install_id": "unzip",
+      "license": "Info-ZIP",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "unzip-6.0",
+      "pname": "unzip",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:47:08.529474Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "6.0",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/nq9p1mx1lww1vzh0nc692yqrr0cnhkc1-unzip-6.0"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "unzip",
+      "broken": false,
+      "derivation": "/nix/store/an08sz12aw9ims81lpfhaw4yh5pb6pw5-unzip-6.0.drv",
+      "description": "Extraction utility for archives compressed in .zip format",
+      "install_id": "unzip",
+      "license": "Info-ZIP",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "unzip-6.0",
+      "pname": "unzip",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:18:41.777819Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "6.0",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/ad88pqx8njan5cv9a2i8ciak674z5c1v-unzip-6.0"
+      },
+      "system": "x86_64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "unzip",
+      "broken": false,
+      "derivation": "/nix/store/wylyf50jbmzk7vql1y54815k6i6cqd26-unzip-6.0.drv",
+      "description": "Extraction utility for archives compressed in .zip format",
+      "install_id": "unzip",
+      "license": "Info-ZIP",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "unzip-6.0",
+      "pname": "unzip",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:55:46.651468Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "6.0",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/d728bq0ajg6r80j9avj2mn82h3alhl88-unzip-6.0"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "yarn",
+      "broken": false,
+      "derivation": "/nix/store/ywj42vq3rkx3jwgbf0vxs4r3fpp61j7g-yarn-1.22.22.drv",
+      "description": "Fast, reliable, and secure dependency management for javascript",
+      "install_id": "yarn",
+      "license": "BSD-2-Clause",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "yarn-1.22.22",
+      "pname": "yarn",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:10:03.831829Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "1.22.22",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/mv0c99igkh2hs9rcp6xq7473ws901byw-yarn-1.22.22"
+      },
+      "system": "aarch64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "yarn",
+      "broken": false,
+      "derivation": "/nix/store/2g82xjbykv821i90wr61n4hbmybb7wq2-yarn-1.22.22.drv",
+      "description": "Fast, reliable, and secure dependency management for javascript",
+      "install_id": "yarn",
+      "license": "BSD-2-Clause",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "yarn-1.22.22",
+      "pname": "yarn",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T08:47:29.869640Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "1.22.22",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/6763b92297klnng7k1g7n93i09rbffxi-yarn-1.22.22"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "yarn",
+      "broken": false,
+      "derivation": "/nix/store/hmgqmnmvdcjzr9xz50c1sw9zanyxk9dd-yarn-1.22.22.drv",
+      "description": "Fast, reliable, and secure dependency management for javascript",
+      "install_id": "yarn",
+      "license": "BSD-2-Clause",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "yarn-1.22.22",
+      "pname": "yarn",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:18:56.577623Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "1.22.22",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/qfva5zmyh99x2vi5axlxk3hncyfwbzmj-yarn-1.22.22"
+      },
+      "system": "x86_64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "yarn",
+      "broken": false,
+      "derivation": "/nix/store/rbbvzwlda6r56jhwsy8arvnq1clz5chz-yarn-1.22.22.drv",
+      "description": "Fast, reliable, and secure dependency management for javascript",
+      "install_id": "yarn",
+      "license": "BSD-2-Clause",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "name": "yarn-1.22.22",
+      "pname": "yarn",
+      "rev": "549bd84d6279f9852cae6225e372cc67fb91a4c1",
+      "rev_count": 992384,
+      "rev_date": "2026-05-05T04:14:16Z",
+      "scrape_date": "2026-05-06T09:56:07.300340Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "1.22.22",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/cmj87b2g1l41mg311w5s68dl4s7c1g1z-yarn-1.22.22"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    }
+  ]
+}

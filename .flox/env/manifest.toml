@@ -1,0 +1,243 @@
+## Flox Environment Manifest -----------------------------------------
+##
+## Ergonomic dev environment for the Converge Magento 2 module.
+##
+## Quick start:
+##   flox activate                   # drop into the shell
+##   flox activate --start-services  # also start MariaDB + OpenSearch
+##   mage-bootstrap                  # scaffold a local Magento + link this module
+##   mage <cmd>                      # shortcut for bin/magento against the scaffold
+##
+## See README-FLOX.md at the repo root for the full guide.
+## -------------------------------------------------------------------
+schema-version = "1.12.0"
+
+
+## Install Packages --------------------------------------------------
+[install]
+# Core PHP runtime (Magento 2.4.x supports PHP 8.2/8.3)
+php82.pkg-path = "php82"
+
+# Magento-required PHP extensions
+php82Extensions-bcmath.pkg-path     = "php82Extensions.bcmath"
+php82Extensions-gd.pkg-path         = "php82Extensions.gd"
+php82Extensions-intl.pkg-path       = "php82Extensions.intl"
+php82Extensions-soap.pkg-path       = "php82Extensions.soap"
+php82Extensions-xsl.pkg-path        = "php82Extensions.xsl"
+php82Extensions-zip.pkg-path        = "php82Extensions.zip"
+php82Extensions-sockets.pkg-path    = "php82Extensions.sockets"
+php82Extensions-pdo_mysql.pkg-path  = "php82Extensions.pdo_mysql"
+php82Extensions-mysqli.pkg-path     = "php82Extensions.mysqli"
+php82Extensions-opcache.pkg-path    = "php82Extensions.opcache"
+php82Extensions-xdebug.pkg-path     = "php82Extensions.xdebug"
+
+# Composer (built against php82)
+composer.pkg-path = "php82Packages.composer"
+
+# Magento storefront tooling
+nodejs.pkg-path = "nodejs_20"
+yarn.pkg-path   = "yarn"
+
+# Datastores Magento needs
+mariadb.pkg-path    = "mariadb_106"
+opensearch.pkg-path = "opensearch"
+
+# Misc dev conveniences
+git.pkg-path     = "git"
+unzip.pkg-path   = "unzip"
+jq.pkg-path      = "jq"
+gnumake.pkg-path = "gnumake"
+
+
+## Environment Variables --------------------------------------------
+[vars]
+MAGENTO_WORKDIR    = ".magento"
+MAGENTO_VERSION    = "2.4.7-p3"
+MAGENTO_DB_NAME    = "magento"
+MAGENTO_DB_USER    = "magento"
+MAGENTO_DB_PASS    = "magento"
+MAGENTO_ADMIN_USER = "admin"
+MAGENTO_ADMIN_PASS = "magento123"
+MAGENTO_BASE_URL   = "http://localhost:8080/"
+
+
+## Activation Hook --------------------------------------------------
+[hook]
+on-activate = '''
+  # --- Repo root --------------------------------------------------
+  export REPO_ROOT="$FLOX_ENV_PROJECT"
+  export MAGENTO_ROOT="$REPO_ROOT/$MAGENTO_WORKDIR"
+
+  # --- Per-env state dirs (gitignored, under .flox/cache) --------
+  export STATE_DIR="$FLOX_ENV_CACHE/state"
+  export MARIADB_DATADIR="$STATE_DIR/mariadb"
+  export MARIADB_SOCKET="$STATE_DIR/mariadb.sock"
+  export MARIADB_PIDFILE="$STATE_DIR/mariadb.pid"
+  export MARIADB_LOG="$STATE_DIR/mariadb.log"
+  export OPENSEARCH_HOME="$STATE_DIR/opensearch"
+  export OPENSEARCH_DATA="$OPENSEARCH_HOME/data"
+  export OPENSEARCH_LOGS="$OPENSEARCH_HOME/logs"
+  mkdir -p "$STATE_DIR" "$OPENSEARCH_DATA" "$OPENSEARCH_LOGS"
+
+  # --- PHP extensions ---------------------------------------------
+  # When php82 is installed alongside php82Extensions.*, Flox/nixpkgs
+  # composes a `php-with-extensions` wrapper. The wrapper's php.ini
+  # lives in <wrapper>/lib/ and loads the bundled defaults (bcmath,
+  # intl, gd, mbstring, iconv, …). A handful of extensions are NOT
+  # auto-bundled (xsl, xdebug) — drop ini snippets for them into our
+  # own scan dir.
+  #
+  # The wrapper exports PHP_INI_SCAN_DIR with setenv(..., 0), i.e.
+  # "don't overwrite if already set", so a naive override blanks the
+  # default. Resolve the wrapper's lib dir from the binary and include
+  # it explicitly alongside ours.
+  if command -v php >/dev/null; then
+    _php_wrapper_lib="$(realpath "$(command -v php)")"
+    _php_wrapper_lib="${_php_wrapper_lib%/bin/php}/lib"
+    _ini_extra="$STATE_DIR/php-ini.d"
+    mkdir -p "$_ini_extra"
+    rm -f "$_ini_extra"/*.ini
+    for _ext in xsl xdebug; do
+      _so="$FLOX_ENV/lib/php/extensions/${_ext}.so"
+      if [ -f "$_so" ]; then
+        if [ "$_ext" = "xdebug" ]; then
+          echo "zend_extension=$_so" > "$_ini_extra/${_ext}.ini"
+        else
+          echo "extension=$_so" > "$_ini_extra/${_ext}.ini"
+        fi
+      fi
+    done
+    export PHP_INI_SCAN_DIR="$_php_wrapper_lib:$_ini_extra"
+    unset _php_wrapper_lib _ini_extra _ext _so
+  fi
+
+  # --- Magento needs lots of memory for composer/setup -----------
+  export COMPOSER_MEMORY_LIMIT=-1
+  export PHP_MEMORY_LIMIT=4G
+
+  # --- Helper scripts on PATH ------------------------------------
+  export PATH="$REPO_ROOT/.flox/bin:$PATH"
+'''
+
+
+## Profile script ---------------------------------------------------
+[profile]
+common = '''
+  cat <<'BANNER'
+┌────────────────────────────────────────────────────────────────┐
+│ Converge Magento 2 dev env                                     │
+│                                                                │
+│ php / composer / mariadb / opensearch are on PATH              │
+│                                                                │
+│ Common commands:                                               │
+│   flox services start         start mariadb + opensearch       │
+│   flox services status        see what is running              │
+│   mage-bootstrap              install Magento into .magento/   │
+│   mage <cmd>                  bin/magento against the scaffold │
+│   mage-lint                   run magento-coding-standard      │
+│   mage-serve                  start PHP built-in webserver     │
+└────────────────────────────────────────────────────────────────┘
+BANNER
+'''
+
+
+## Services --------------------------------------------------------
+##
+##  flox services start                   start everything
+##  flox services start mariadb           start one
+##  flox services logs opensearch -f      tail logs
+##  flox activate --start-services        activate and autostart
+## -----------------------------------------------------------------
+[services]
+
+mariadb.command = '''
+  set -e
+  # mariadbd refuses to run as root. flox-on-Linux dev shells are
+  # normally launched as the developer's user; if you're somehow
+  # running as root (e.g. in a container), `su` to an unprivileged
+  # user before starting services.
+  USER_NAME="$(whoami)"
+  if [ ! -d "$MARIADB_DATADIR/mysql" ]; then
+    mariadb-install-db --auth-root-authentication-method=normal \
+      --datadir="$MARIADB_DATADIR" --user="$USER_NAME" >/dev/null
+  fi
+  exec mariadbd \
+    --datadir="$MARIADB_DATADIR" \
+    --socket="$MARIADB_SOCKET" \
+    --pid-file="$MARIADB_PIDFILE" \
+    --port=3306 \
+    --bind-address=127.0.0.1 \
+    --user="$USER_NAME" \
+    --log-error="$MARIADB_LOG"
+'''
+mariadb.is-daemon = false
+mariadb.shutdown.command = '''
+  if [ -f "$MARIADB_PIDFILE" ]; then
+    kill "$(cat "$MARIADB_PIDFILE")" 2>/dev/null || true
+  fi
+'''
+
+opensearch.command = '''
+  set -e
+  # nixpkgs' opensearch needs OPENSEARCH_HOME pointed at the install
+  # tree (the wrapper doesn't set it); resolve it from the binary.
+  _os_bin="$(realpath "$(command -v opensearch)")"
+  export OPENSEARCH_HOME="${_os_bin%/bin/opensearch}"
+  unset _os_bin
+  # NB: opensearch refuses to run as root; do not invoke `flox services
+  # start opensearch` as root — switch to an unprivileged user first.
+
+  # OpenSearch 3.x requires its security java agent on the JVM
+  # startup classpath — nixpkgs' opensearch-3 wrapper omits this so
+  # we have to add it ourselves.
+  OPENSEARCH_JAVA_OPTS="-Xms512m -Xmx512m"
+  if [ -f "$OPENSEARCH_HOME/agent/opensearch-agent.jar" ]; then
+    OPENSEARCH_JAVA_OPTS="-javaagent:$OPENSEARCH_HOME/agent/opensearch-agent.jar $OPENSEARCH_JAVA_OPTS"
+  fi
+  export OPENSEARCH_JAVA_OPTS
+  # Our config lives under $STATE_DIR/opensearch (see [hook]). Override
+  # OPENSEARCH_HOME's `config` path with OPENSEARCH_PATH_CONF.
+  OPENSEARCH_PATH_CONF="$STATE_DIR/opensearch/config"
+  export OPENSEARCH_PATH_CONF
+  mkdir -p "$OPENSEARCH_PATH_CONF"
+  if [ ! -f "$OPENSEARCH_PATH_CONF/opensearch.yml" ]; then
+    cat > "$OPENSEARCH_PATH_CONF/opensearch.yml" <<EOF
+cluster.name: converge-dev
+node.name: dev-node
+path.data: $OPENSEARCH_DATA
+path.logs: $OPENSEARCH_LOGS
+network.host: 127.0.0.1
+http.port: 9200
+discovery.type: single-node
+plugins.security.disabled: true
+EOF
+    cat > "$OPENSEARCH_PATH_CONF/jvm.options" <<'EOF'
+-Xms512m
+-Xmx512m
+-XX:+UseG1GC
+-Djava.awt.headless=true
+-Dfile.encoding=UTF-8
+EOF
+    cat > "$OPENSEARCH_PATH_CONF/log4j2.properties" <<'EOF'
+status = error
+appender.console.type = Console
+appender.console.name = console
+appender.console.layout.type = PatternLayout
+appender.console.layout.pattern = [%d{ISO8601}][%-5p][%-25c{1.}] %marker%m%n
+rootLogger.level = info
+rootLogger.appenderRef.console.ref = console
+EOF
+  fi
+  exec opensearch
+'''
+opensearch.is-daemon = false
+
+
+## Other Environment Options ---------------------------------------
+[options]
+systems = [
+  "x86_64-linux",
+  "aarch64-linux",
+  "x86_64-darwin",
+  "aarch64-darwin",
+]

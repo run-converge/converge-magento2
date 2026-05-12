@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Drop into a mysql client against the local Magento database.
+set -euo pipefail
+: "${MARIADB_SOCKET:?run from inside the flox env (flox activate)}"
+: "${MAGENTO_DB_NAME:?}" "${MAGENTO_DB_USER:?}" "${MAGENTO_DB_PASS:?}"
+exec mysql --socket="$MARIADB_SOCKET" \
+  -u"$MAGENTO_DB_USER" -p"$MAGENTO_DB_PASS" "$MAGENTO_DB_NAME" "$@"

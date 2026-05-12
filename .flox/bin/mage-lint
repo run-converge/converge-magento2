@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Run magento-coding-standard phpcs across the module sources.
+#
+# We install phpcs + magento-coding-standard into a *separate* composer
+# project under $STATE_DIR/tools/ instead of the repo's own vendor/.
+# Reason: this repo's composer.json autoloads `registration.php` via
+# its `autoload.files` block, and registration.php requires Magento
+# classes — so anything that touches vendor/autoload.php blows up
+# without a full Magento install. Keeping the lint toolchain in its
+# own project bypasses that entirely.
+set -euo pipefail
+
+: "${REPO_ROOT:?run from inside the flox env (flox activate)}"
+: "${STATE_DIR:?run from inside the flox env (flox activate)}"
+
+TOOLS_DIR="$STATE_DIR/tools"
+mkdir -p "$TOOLS_DIR"
+
+if [ ! -x "$TOOLS_DIR/vendor/bin/phpcs" ]; then
+  echo "→ installing magento-coding-standard into $TOOLS_DIR"
+  cd "$TOOLS_DIR"
+  cat > composer.json <<'EOF'
+{
+  "name": "converge/magento2-dev-tools",
+  "description": "Isolated lint toolchain for the Converge Magento 2 module",
+  "require-dev": {
+    "magento/magento-coding-standard": "^31.0",
+    "dealerdirect/phpcodesniffer-composer-installer": "^1.0"
+  },
+  "config": {
+    "allow-plugins": {
+      "dealerdirect/phpcodesniffer-composer-installer": true
+    }
+  }
+}
+EOF
+  COMPOSER_ALLOW_SUPERUSER="${COMPOSER_ALLOW_SUPERUSER:-1}" \
+    composer install --no-interaction --no-progress
+fi
+
+cd "$REPO_ROOT"
+TARGETS=(Block Model Observer Plugin SessionDataProvider Spec etc registration.php)
+exec "$TOOLS_DIR/vendor/bin/phpcs" --standard=Magento2 --colors \
+     --extensions=php,phtml \
+     "${TARGETS[@]}" "$@"

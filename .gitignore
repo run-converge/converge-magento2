@@ -1,0 +1,11 @@
+# Composer dev deps
+/vendor/
+composer.lock
+
+# Local Magento scaffold (created by `mage-bootstrap`)
+/.magento/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/

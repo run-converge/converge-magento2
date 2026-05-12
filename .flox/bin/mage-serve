@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Start PHP's built-in web server in front of the Magento install.
+# Fine for module dev — not for load testing.
+set -euo pipefail
+
+: "${MAGENTO_ROOT:?run from inside the flox env (flox activate)}"
+
+PORT="${1:-8080}"
+
+if [ ! -d "$MAGENTO_ROOT/pub" ]; then
+  echo "error: $MAGENTO_ROOT/pub not found — run 'mage-bootstrap' first" >&2
+  exit 1
+fi
+
+cd "$MAGENTO_ROOT"
+echo "→ serving Magento on http://localhost:$PORT  (Ctrl-C to stop)"
+exec php -d memory_limit="${PHP_MEMORY_LIMIT:-4G}" \
+        -S "127.0.0.1:$PORT" \
+        -t pub pub/index.php

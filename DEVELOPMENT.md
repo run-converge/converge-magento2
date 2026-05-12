@@ -43,7 +43,67 @@
 - Verify that sessions and tracking are private
 
 ## Guide
-### Setting up Magento 2 for local development
+### Setting up Magento 2 for local development (Flox, recommended)
+
+The repo ships a [Flox](https://flox.dev) environment that provisions
+PHP 8.2 with every Magento extension, Composer, MariaDB and OpenSearch
+in one command — no MAMP, no system-wide installs.
+
+#### One-time setup
+
+1. Install Flox: <https://flox.dev/docs/install-flox/> (macOS or Linux).
+2. Clone this repo and `cd` into it.
+3. `flox activate` — the first activation downloads the toolchain (a
+   few hundred MB, cached after that).
+
+That's it. PHP, `composer`, `mariadbd`, `opensearch`, `node`, `yarn`
+are now on `PATH`. Try `php -v && composer --version`.
+
+#### Daily flow
+
+```sh
+flox activate --start-services   # drop into the shell + start MariaDB + OpenSearch
+mage-lint                        # phpcs against Magento coding standard
+mage <cmd>                       # bin/magento against the local scaffold
+mage-db                          # mysql client into the magento DB
+mage-serve                       # PHP built-in webserver on :8080
+flox services status             # see what's running
+flox services logs opensearch -f # tail logs
+```
+
+The lint toolchain (`mage-lint`) is self-installing on first run and
+works without a Magento install — handy for quickly checking a PR.
+
+#### Full Magento scaffold (optional)
+
+If you want a real Magento store to test against, get your
+[Marketplace access keys](https://marketplace.magento.com/customer/accessKeys/),
+export them, and run `mage-bootstrap`:
+
+```sh
+export MAGENTO_PUBLIC_KEY=...
+export MAGENTO_PRIVATE_KEY=...
+flox activate --start-services
+mage-bootstrap        # creates .magento/, installs Magento, links this module
+mage-serve            # serve it on http://localhost:8080
+```
+
+The scaffold lives under `.magento/` (gitignored). This module is
+symlinked into `.magento/app/code/Converge/Converge`, so edits in the
+repo are picked up live (run `mage cache:flush` after config changes).
+
+Defaults are in [`.flox/env/manifest.toml`](.flox/env/manifest.toml)
+under `[vars]` — override per-shell with `export MAGENTO_VERSION=...`
+before running `mage-bootstrap`.
+
+#### What lives where
+
+- `.flox/env/manifest.toml` — package list, services, env vars, hooks
+- `.flox/bin/` — `mage`, `mage-bootstrap`, `mage-lint`, `mage-serve`, `mage-db`
+- `.flox/cache/state/` — MariaDB data dir, OpenSearch data, tools/ (gitignored)
+- `.magento/` — Magento install (gitignored, created by `mage-bootstrap`)
+
+### Setting up Magento 2 for local development (manual / MAMP)
 - Install MAMP
     - `Add /Applications/MAMP/bin/php/php8.2.0/bin to $PATH`
     - In the UI: use 80/3306 setup, choose php 8.2.0
