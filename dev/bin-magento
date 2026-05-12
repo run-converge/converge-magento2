@@ -1,21 +1,7 @@
 #!/usr/bin/env bash
-#
-# Thin wrapper for running bin/magento inside the dev container.
-#
-# Examples:
-#   dev/bin-magento cache:flush
-#   dev/bin-magento module:status Converge_Converge
-#   dev/bin-magento setup:upgrade
-
+# Thin wrapper for `bin/magento` inside the phpfpm container.
+# Equivalent to `make magento <args>`; useful when you don't want Make.
 set -euo pipefail
-
 DEV_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MAGENTO_DIR="$DEV_DIR/magento"
-
-if [ ! -d "$MAGENTO_DIR" ]; then
-    echo "Magento dev stack is not bootstrapped. Run dev/setup.sh first." >&2
-    exit 1
-fi
-
-cd "$MAGENTO_DIR"
+cd "$DEV_DIR"
 exec docker compose exec -T phpfpm bin/magento "$@"

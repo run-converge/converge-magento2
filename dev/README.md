@@ -1,68 +1,79 @@
 # Local Magento 2 dev stack
 
-`dev/setup.sh` bootstraps a real Magento 2 install (with sample data) under
-`dev/magento/`, then bind-mounts this repository in as the
-`Converge_Converge` module so changes here can be developed and tested
-against a live storefront.
+A self-contained Docker Compose stack — Nginx, PHP-FPM, MariaDB, OpenSearch,
+Redis — that runs a real Magento 2 install with this repo bind-mounted in
+as the `Converge_Converge` module.
 
-The runtime is [markshust/docker-magento](https://github.com/markshust/docker-magento),
-which provides Nginx, PHP-FPM, MariaDB, OpenSearch, Redis, RabbitMQ and
-Mailhog wired up the way Magento expects.
-
-## Requirements
+## Prerequisites
 
 - Docker + Docker Compose v2
-- `curl`
+- GNU Make (any recent version)
 - Magento Marketplace access keys
-  ([get them here](https://commercemarketplace.adobe.com/customer/accessKeys/)).
-  Provide them either in `~/.composer/auth.json` or as env vars
-  (`MAGENTO_PUBLIC_KEY` / `MAGENTO_PRIVATE_KEY`).
-- An `/etc/hosts` entry for the domain you pick (default: `magento.test`):
-  ```
-  127.0.0.1 magento.test
-  ```
+  ([generate here](https://commercemarketplace.adobe.com/customer/accessKeys/)) —
+  needed once, to download Magento via composer.
 
-## Quick start
+## First run
 
 ```bash
-# One-time bootstrap (10–30 min the first time, mostly waiting on sample data)
-dev/setup.sh
-
-# Run bin/magento inside the container
-dev/bin-magento cache:flush
-dev/bin-magento module:status Converge_Converge
-
-# Stop / start the stack without losing data
-( cd dev/magento && bin/stop )
-( cd dev/magento && bin/start )
-
-# Tear everything down (removes volumes/data)
-dev/teardown.sh
-dev/teardown.sh --purge   # also delete dev/magento/
+cd dev
+cp .env.example .env
+$EDITOR .env                       # fill in MAGENTO_PUBLIC_KEY / PRIVATE_KEY
+make setup                         # ~10 min: composer install + setup:install
 ```
 
-After the bootstrap finishes:
+When that finishes:
 
-- Storefront: <https://magento.test/>
-- Admin: <https://magento.test/admin> (user `admin` / password `admin123`)
+- Storefront: <http://localhost:8080/>
+- Admin: <http://localhost:8080/admin> (user `admin`, pass `admin123!`)
 
-## Environment overrides
+Optionally seed sample products / customers / orders (slow, ~15 min):
 
-| Variable             | Default      | Notes                                 |
-|----------------------|--------------|---------------------------------------|
-| `MAGENTO_DOMAIN`     | `magento.test` | Hostname used by the storefront URL |
-| `MAGENTO_EDITION`    | `community`  | `community` or `enterprise`           |
-| `MAGENTO_VERSION`    | `2.4.7-p3`   | Any tag supported by docker-magento   |
-| `SKIP_SAMPLE_DATA`   | `0`          | Set to `1` to skip `sampledata:deploy`|
-
-## How the module is linked
-
-`dev/setup.sh` creates a symlink:
-
-```
-dev/magento/src/app/code/Converge/Converge -> <repo root>
+```bash
+make sample-data
 ```
 
-Because `src/` is bind-mounted into the PHP-FPM container, edits in this
-repo show up immediately. After XML / `di.xml` / `events.xml` changes, run
-`dev/bin-magento cache:flush`.
+## Day-to-day
+
+```bash
+make up                       # start the stack
+make down                     # stop the stack (data persists)
+make destroy                  # stop and wipe all volumes
+make logs                     # tail container logs
+make ps                       # show container status
+make shell                    # bash inside phpfpm
+make magento cache:flush      # any bin/magento command
+./bin-magento module:status   # same idea, without make
+```
+
+## How the module is wired up
+
+The repo is bind-mounted at `/srv/converge` inside the `phpfpm` container.
+`install.sh` symlinks that to `app/code/Converge/Converge`, so edits in this
+repo are visible to Magento immediately. After XML / `di.xml` / `events.xml`
+changes:
+
+```bash
+make magento cache:flush
+```
+
+## What's in `.env`
+
+| Variable                 | Default                  | Notes                           |
+|--------------------------|--------------------------|---------------------------------|
+| `MAGENTO_PUBLIC_KEY`     | —                        | Required first run              |
+| `MAGENTO_PRIVATE_KEY`    | —                        | Required first run              |
+| `MAGENTO_VERSION`        | `2.4.7-p3`               | Any Magento OSS tag             |
+| `MAGENTO_BASE_URL`       | `http://localhost:8080/` | Must match `HTTP_PORT`          |
+| `HTTP_PORT`              | `8080`                   | Host port mapped to Nginx       |
+| `MAGENTO_ADMIN_USER`     | `admin`                  |                                 |
+| `MAGENTO_ADMIN_PASSWORD` | `admin123!`              |                                 |
+| `PHP_TAG`                | `8.3-fpm-5`              | `markoshust/magento-php` tag    |
+| `NGINX_TAG`              | `1.24-0`                 | `markoshust/magento-nginx` tag  |
+
+## Container images
+
+The PHP-FPM and Nginx images come from
+[markshust/docker-magento](https://github.com/markshust/docker-magento) — they
+have all the PHP extensions Magento needs and a working Nginx config baked in.
+Everything else (DB, search, cache, install scripting) is defined in this
+directory.

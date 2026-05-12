@@ -1,0 +1,76 @@
+name: converge-magento
+
+services:
+  db:
+    image: mariadb:10.6
+    environment:
+      MARIADB_ROOT_PASSWORD: magento
+      MARIADB_DATABASE: magento
+      MARIADB_USER: magento
+      MARIADB_PASSWORD: magento
+    volumes:
+      - dbdata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  opensearch:
+    image: opensearchproject/opensearch:2.12.0
+    environment:
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+      - DISABLE_INSTALL_DEMO_CONFIG=true
+      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
+    volumes:
+      - osdata:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+
+  phpfpm:
+    image: markoshust/magento-php:${PHP_TAG:-8.3-fpm-5}
+    user: app
+    working_dir: /var/www/html
+    volumes:
+      - appdata:/var/www/html
+      - ../:/srv/converge
+      - composer-cache:/var/www/.composer/cache
+      - ./install.sh:/usr/local/bin/install-magento:ro
+    env_file:
+      - .env
+    environment:
+      COMPOSER_MEMORY_LIMIT: "-1"
+      MAGENTO_VERSION: "${MAGENTO_VERSION:-2.4.7-p3}"
+      MAGENTO_BASE_URL: "${MAGENTO_BASE_URL:-http://localhost:8080/}"
+      MAGENTO_ADMIN_USER: "${MAGENTO_ADMIN_USER:-admin}"
+      MAGENTO_ADMIN_PASSWORD: "${MAGENTO_ADMIN_PASSWORD:-admin123!}"
+      MAGENTO_ADMIN_EMAIL: "${MAGENTO_ADMIN_EMAIL:-dev@runconverge.com}"
+    depends_on:
+      db:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  nginx:
+    image: markoshust/magento-nginx:${NGINX_TAG:-1.24-0}
+    ports:
+      - "${HTTP_PORT:-8080}:8000"
+    volumes:
+      - appdata:/var/www/html
+    depends_on:
+      - phpfpm
+
+volumes:
+  appdata:
+  dbdata:
+  osdata:
+  composer-cache:

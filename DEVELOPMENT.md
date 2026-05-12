@@ -44,10 +44,14 @@
 
 ## Guide
 ### Setting up Magento 2 for local development (Docker, recommended)
-Run `dev/setup.sh` from the repo root. This boots a Magento install with
-sample data under `dev/magento/` and bind-mounts this repo as
-`app/code/Converge/Converge`. See `dev/README.md` for prerequisites and
-options.
+```bash
+cd dev
+cp .env.example .env  # fill in Marketplace keys
+make setup
+```
+Brings up a full Magento stack (Nginx, PHP-FPM, MariaDB, OpenSearch, Redis)
+with this repo bind-mounted as `app/code/Converge/Converge`. See `dev/README.md`
+for the full command list and configuration knobs.
 
 ### Setting up Magento 2 for local development (MAMP, legacy)
 - Install MAMP
