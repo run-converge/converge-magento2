@@ -43,7 +43,13 @@
 - Verify that sessions and tracking are private
 
 ## Guide
-### Setting up Magento 2 for local development
+### Setting up Magento 2 for local development (Docker, recommended)
+Run `dev/setup.sh` from the repo root. This boots a Magento install with
+sample data under `dev/magento/` and bind-mounts this repo as
+`app/code/Converge/Converge`. See `dev/README.md` for prerequisites and
+options.
+
+### Setting up Magento 2 for local development (MAMP, legacy)
 - Install MAMP
     - `Add /Applications/MAMP/bin/php/php8.2.0/bin to $PATH`
     - In the UI: use 80/3306 setup, choose php 8.2.0

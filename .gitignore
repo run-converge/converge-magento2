@@ -1,0 +1,7 @@
+# Local Magento dev stack created by dev/setup.sh
+dev/magento/
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store
