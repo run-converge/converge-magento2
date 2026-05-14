@@ -41,11 +41,17 @@ class Checkout
             ? $this->quote->getBillingAddress()
             : $this->quote->getShippingAddress();
         $discount = $address ? abs((float) $address->getDiscountAmount()) : 0.0;
+        // Virtual carts have no shipping; non-virtual carts carry the
+        // shipping amount on the shipping address (not the quote totals).
+        $shipping = ($address && !$this->quote->isVirtual())
+            ? (float) $address->getShippingAmount()
+            : 0.0;
         return [
             "id" => $this->quote->getId(),
             "total_price" => (float) $this->quote->getGrandTotal(),
             "total_discount" => $discount,
             "total_tax" => $tax,
+            "total_shipping" => $shipping,
             "currency" => $this->currency,
             "items" => $items,
         ];
