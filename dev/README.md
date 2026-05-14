@@ -44,16 +44,16 @@ just sample-data        # or: docker compose exec phpfpm bin/magento sampledata:
 
 ## Day-to-day
 
-`just` is a thin convenience wrapper — every recipe maps to one or two
-`docker compose` commands:
+`just` is a thin convenience wrapper. Everything `docker compose`-shaped
+is forwarded through `just deploy`; the rest are typed shortcuts:
 
 ```bash
 just                          # list all recipes
-just up                       # docker compose up -d --wait
-just down                     # docker compose down
-just destroy                  # docker compose down -v   (wipes volumes)
-just logs                     # docker compose logs -f
-just ps                       # docker compose ps
+just deploy up -d --wait      # bring the stack up
+just deploy down              # stop the stack (data persists)
+just deploy down -v           # stop and wipe volumes
+just deploy logs -f           # tail container logs
+just deploy ps                # show container status
 just shell                    # docker compose exec phpfpm bash
 just magento cache:flush      # any bin/magento command
 ./bin-magento module:status   # same idea, without just
@@ -79,8 +79,8 @@ A few things that are non-obvious if you're poking at the stack:
   is bind-mounted at the real module path, not at `/srv/converge` with a
   symlink — Magento's `Path "..." cannot be used with directory ...`
   validator vetoes any template whose realpath leaves `/var/www/html`.
-- **Sample data is a separate step.** `just setup` only installs Magento.
-  Run `just sample-data` afterwards if you want a populated catalog.
+- **Sample data is a separate step.** `docker compose up` only installs
+  Magento. Run `just sample-data` afterwards if you want a populated catalog.
 
 ## Troubleshooting
 
@@ -89,8 +89,8 @@ A few things that are non-obvious if you're poking at the stack:
   `docker compose exec nginx ls /sock/` should show `docker.sock`.
 - **Coming from an older revision of this stack?** The volume layout
   changed (we dropped `/srv/converge` and `composer-cache`, added
-  `sockdata`). The simplest fix is `just destroy && just setup` to start
-  from a clean slate.
+  `sockdata`). The simplest fix is `docker compose down -v &&
+  docker compose up -d --wait` to start from a clean slate.
 
 ## What's in `.env`
 

@@ -10,25 +10,9 @@ php := dc + " exec -T phpfpm"
 default:
     @just --list --unsorted
 
-# Bring up the stack and wait for it to be healthy. First run installs Magento (~10 min).
-up:
-    {{dc}} up -d --wait
-
-# Stop the stack (keep data).
-down:
-    {{dc}} down
-
-# Stop and delete all volumes.
-destroy:
-    {{dc}} down -v
-
-# Tail container logs.
-logs:
-    {{dc}} logs -f
-
-# Show container status.
-ps:
-    {{dc}} ps
+# Forward args to `docker compose` — e.g. `just deploy up -d --wait`, `just deploy down -v`, `just deploy logs -f`.
+deploy +args:
+    {{dc}} {{args}}
 
 # Open a shell in the phpfpm container.
 shell:
