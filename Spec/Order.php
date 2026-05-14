@@ -42,7 +42,9 @@ class Order
         return [
             "id" => $this->getOrderId(),
             "total_price" => (float) $this->order->getGrandTotal(),
-            "total_discount" => (float) $this->order->getDiscountAmount(),
+            // Magento stores discount_amount as a negative value (e.g. -10.00 for $10 off).
+            // Converge expects the magnitude as a positive number.
+            "total_discount" => abs((float) $this->order->getDiscountAmount()),
             "total_tax" => (float) $this->order->getTaxAmount(),
             "currency" => $this->currency,
             "items" => $items,

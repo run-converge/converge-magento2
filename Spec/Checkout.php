@@ -31,8 +31,10 @@ class Checkout
             ];
         }
         $totals = $this->quote->getTotals();
-        $tax = (isset($totals['tax'])) ? $totals['tax']->getValue(): 0;
-        $discount = (isset($totals['discount'])) ? $totals['discount']->getValue(): 0;
+        $tax = isset($totals['tax']) ? (float) $totals['tax']->getValue() : 0.0;
+        // Magento stores the discount total as a negative value (e.g. -10.00 for $10 off).
+        // Converge expects the magnitude as a positive number.
+        $discount = isset($totals['discount']) ? abs((float) $totals['discount']->getValue()) : 0.0;
         return [
             "id" => $this->quote->getId(),
             "total_price" => (float) $this->quote->getGrandTotal(),
