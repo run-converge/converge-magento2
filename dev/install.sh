@@ -2,10 +2,10 @@
 #
 # Runs *inside* the phpfpm container. Idempotent: safe to re-run.
 #
-# 1. Downloads Magento via composer (first run only).
+# 1. Downloads Magento via composer into /var/www/html (first run only).
 # 2. Runs bin/magento setup:install against the docker-compose services.
-# 3. Symlinks /srv/converge -> app/code/Converge/Converge.
-# 4. Enables Converge_Converge.
+# 3. Enables Converge_Converge (the repo itself is bind-mounted at
+#    app/code/Converge/Converge by docker compose; see compose.yaml).
 
 set -euo pipefail
 
@@ -16,8 +16,10 @@ cd /var/www/html
 : "${MAGENTO_PUBLIC_KEY:?set MAGENTO_PUBLIC_KEY in dev/.env}"
 : "${MAGENTO_PRIVATE_KEY:?set MAGENTO_PRIVATE_KEY in dev/.env}"
 
-mkdir -p /var/www/.composer
-cat > /var/www/.composer/auth.json <<JSON
+: "${COMPOSER_HOME:=/var/www/html/.composer-home}"
+export COMPOSER_HOME
+mkdir -p "${COMPOSER_HOME}"
+cat > "${COMPOSER_HOME}/auth.json" <<JSON
 {
   "http-basic": {
     "repo.magento.com": {
@@ -27,15 +29,17 @@ cat > /var/www/.composer/auth.json <<JSON
   }
 }
 JSON
-chmod 600 /var/www/.composer/auth.json
+chmod 600 "${COMPOSER_HOME}/auth.json"
 
 if [ ! -f composer.json ] || ! grep -q magento/project-community-edition composer.json; then
     echo "==> composer create-project magento/project-community-edition=${MAGENTO_VERSION}"
+    # Create-project into /tmp/m2 first, then move the files into /var/www/html.
+    # This avoids composer refusing to install into a non-empty directory
+    # (app/code/Converge/Converge is already populated by the bind mount).
     composer create-project --no-install --no-progress \
         --repository-url=https://repo.magento.com/ \
         "magento/project-community-edition=${MAGENTO_VERSION}" \
         /tmp/m2
-    # Move into /var/www/html without disturbing the bind-mounted /srv/converge
     shopt -s dotglob
     mv /tmp/m2/* /var/www/html/
     shopt -u dotglob
@@ -47,11 +51,9 @@ if [ ! -d vendor/magento ]; then
     composer install --no-interaction --no-progress
 fi
 
+# app/code/Converge/Converge is the repo, bind-mounted in by compose.yaml.
+# Just make sure the parent directory exists.
 mkdir -p app/code/Converge
-if [ ! -L app/code/Converge/Converge ]; then
-    rm -rf app/code/Converge/Converge
-    ln -s /srv/converge app/code/Converge/Converge
-fi
 
 if [ ! -f app/etc/env.php ]; then
     echo "==> bin/magento setup:install"
@@ -78,17 +80,22 @@ bin/magento setup:upgrade
 bin/magento deploy:mode:set developer -s
 bin/magento cache:flush
 
+ADMIN_URI=$(bin/magento info:adminuri 2>/dev/null | awk -F': ' '{print $2}' | tr -d '[:space:]')
+
 cat <<EOF
 
 ------------------------------------------------------------------------
   Magento is ready.
   Storefront: ${MAGENTO_BASE_URL}
-  Admin:      ${MAGENTO_BASE_URL}admin
+  Admin:      ${MAGENTO_BASE_URL%/}${ADMIN_URI:-/admin}
               user: ${MAGENTO_ADMIN_USER}
               pass: ${MAGENTO_ADMIN_PASSWORD}
 
-  The repo is symlinked to app/code/Converge/Converge — edits in this
+  The repo is bind-mounted at app/code/Converge/Converge — edits in this
   repo show up immediately. After XML/config changes:
     make magento cache:flush
+
+  Optional: load Magento's sample catalog (~10-15 min):
+    make sample-data
 ------------------------------------------------------------------------
 EOF

@@ -39,13 +39,22 @@ services:
     user: app
     working_dir: /var/www/html
     volumes:
+      # Magento codebase (downloaded by install.sh on first run).
       - appdata:/var/www/html
-      - ../:/srv/converge
-      - composer-cache:/var/www/.composer/cache
+      # PHP-FPM listens on /sock/docker.sock; shared with nginx so it can
+      # reach it via the unix socket (the markoshust image no longer uses
+      # TCP 9000 by default).
+      - sockdata:/sock
+      # This repo, bind-mounted directly into the Magento module path so
+      # local edits are visible to Magento immediately. Mounting it on the
+      # symlink path that older revisions used (/srv/converge) tripped
+      # Magento's template path validator.
+      - ../:/var/www/html/app/code/Converge/Converge
       - ./install.sh:/usr/local/bin/install-magento:ro
     env_file:
       - .env
     environment:
+      COMPOSER_HOME: /var/www/html/.composer-home
       COMPOSER_MEMORY_LIMIT: "-1"
       MAGENTO_VERSION: "${MAGENTO_VERSION:-2.4.7-p3}"
       MAGENTO_BASE_URL: "${MAGENTO_BASE_URL:-http://localhost:8080/}"
@@ -66,6 +75,10 @@ services:
       - "${HTTP_PORT:-8080}:8000"
     volumes:
       - appdata:/var/www/html
+      # Shared with phpfpm — nginx talks to PHP-FPM over /sock/docker.sock.
+      - sockdata:/sock
+      # Overrides the upstream so nginx uses the unix socket instead of TCP.
+      - ./nginx-default.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - phpfpm
 
@@ -73,4 +86,4 @@ volumes:
   appdata:
   dbdata:
   osdata:
-  composer-cache:
+  sockdata:

@@ -24,7 +24,10 @@ make setup                         # ~10 min: composer install + setup:install
 When that finishes:
 
 - Storefront: <http://localhost:8080/>
-- Admin: <http://localhost:8080/admin> (user `admin`, pass `admin123!`)
+- Admin: <http://localhost:8080/> + the path printed at the end of
+  `make setup` (Magento randomizes it, e.g. `/admin_a1b2c3`). To look it
+  up later: `make magento info:adminuri`. Default login: user `admin`,
+  pass `admin123!`.
 
 Optionally seed sample products / customers / orders (slow, ~15 min):
 
@@ -47,14 +50,36 @@ make magento cache:flush      # any bin/magento command
 
 ## How the module is wired up
 
-The repo is bind-mounted at `/srv/converge` inside the `phpfpm` container.
-`install.sh` symlinks that to `app/code/Converge/Converge`, so edits in this
-repo are visible to Magento immediately. After XML / `di.xml` / `events.xml`
-changes:
+The repo is bind-mounted directly at `app/code/Converge/Converge` inside the
+`phpfpm` container, so local edits show up in Magento immediately — no
+rebuild or copy step. After XML / `di.xml` / `events.xml` changes:
 
 ```bash
 make magento cache:flush
 ```
+
+A few things that are non-obvious if you're poking at the stack:
+
+- **PHP-FPM uses a unix socket.** The `markoshust/magento-php` image
+  listens on `/sock/docker.sock`, not TCP `9000`. `compose.yaml` shares a
+  `sockdata` volume between `phpfpm` and `nginx`, and
+  `nginx-default.conf` points the upstream at that socket.
+- **Magento rejects template paths outside its root.** That's why the repo
+  is bind-mounted at the real module path, not at `/srv/converge` with a
+  symlink — Magento's `Path "..." cannot be used with directory ...`
+  validator vetoes any template whose realpath leaves `/var/www/html`.
+- **Sample data is a separate step.** `make setup` only installs Magento.
+  Run `make sample-data` afterwards if you want a populated catalog.
+
+## Troubleshooting
+
+- **`502 Bad Gateway`** — usually means nginx can't reach php-fpm. Check
+  that both containers are using the `sockdata` volume:
+  `docker compose exec nginx ls /sock/` should show `docker.sock`.
+- **Coming from an older revision of this stack?** The volume layout
+  changed (we dropped `/srv/converge` and `composer-cache`, added
+  `sockdata`). The simplest fix is `make destroy && make setup` to start
+  from a clean slate.
 
 ## What's in `.env`
 
