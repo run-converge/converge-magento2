@@ -1,0 +1,9 @@
+dev/.env
+
+# Composer
+/vendor/
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store

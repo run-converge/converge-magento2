@@ -1,0 +1,29 @@
+# Run from the dev/ directory.
+#
+# The stack self-installs on first `docker compose up`; the recipes
+# below are just shortcuts. `just` on its own lists everything.
+
+dc  := "docker compose"
+php := dc + " exec -T phpfpm"
+
+# Show available recipes.
+default:
+    @just --list --unsorted
+
+# Forward args to `docker compose` — e.g. `just deploy up -d --wait`, `just deploy down -v`, `just deploy logs -f`.
+deploy +args:
+    {{dc}} {{args}}
+
+# Open a shell in the phpfpm container.
+shell:
+    {{dc}} exec phpfpm bash
+
+# Deploy Magento sample data (slow, ~10-15 min).
+sample-data:
+    {{php}} bin/magento sampledata:deploy
+    {{php}} bin/magento setup:upgrade
+    {{php}} bin/magento cache:flush
+
+# Run bin/magento <args> inside the container, e.g. `just magento cache:flush`.
+magento *args:
+    {{php}} bin/magento {{args}}
