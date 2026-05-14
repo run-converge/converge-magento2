@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Thin wrapper for `bin/magento` inside the phpfpm container.
-# Equivalent to `make magento <args>`; useful when you don't want Make.
+# Equivalent to `just magento <args>`; useful when you don't want just.
 set -euo pipefail
 DEV_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DEV_DIR"

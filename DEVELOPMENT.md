@@ -43,40 +43,13 @@
 - Verify that sessions and tracking are private
 
 ## Guide
-### Setting up Magento 2 for local development (Docker, recommended)
+### Setting up Magento 2 for local development
 ```bash
 cd dev
-cp .env.example .env  # fill in Marketplace keys
-make setup
+cp .env.example .env             # fill in Marketplace keys
+docker compose up -d --wait
 ```
 Brings up a full Magento stack (Nginx, PHP-FPM, MariaDB, OpenSearch, Redis)
-with this repo bind-mounted as `app/code/Converge/Converge`. See `dev/README.md`
-for the full command list and configuration knobs.
-
-### Setting up Magento 2 for local development (MAMP, legacy)
-- Install MAMP
-    - `Add /Applications/MAMP/bin/php/php8.2.0/bin to $PATH`
-    - In the UI: use 80/3306 setup, choose php 8.2.0
-- Install Elasticsearch
-    - `brew install opensearch`
-- Install composer
-    - `php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"`
-    - `php -r "if (hash_file('sha384', 'composer-setup.php') === '55ce33d7678c5a611085589f1f3ddf8b3c52d662cd01d4ba75c0ee0459970c2200a51f492d557530c71c15d8dba01eae') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;"`
-    - `php composer-setup.php`
-    - `php -r "unlink('composer-setup.php');"`
-    - `mv composer.phar /usr/local/bin/composer`
-- in /Applications/MAMP/htdocs, create the magento project
-    - `composer create-project --repository-url=https://repo.magento.com/ magento/project-community-edition:2.3.7-p3`
-    - mv all files to htdocs root
-- create database in localhost/phpMyAdmin + create db user for magento
-- install magento
-    - `php -dmemory_limit=2048M bin/magento setup:install --base-url=http://localhost/ --db-host=localhost --db-name=magento --db-user=magento --db-password=magento --admin-firstname=admin --admin-lastname=admin --admin-email=dev@runconverge.com --admin-user=admin --admin-password=magento123 --language=en_US \--currency=USD --timezone=America/Los_Angeles --use-rewrites=1`
-    - note the admin path
-- generate sampledata
-    - `php bin/magento sampledata:deploy`
-    - `php bin/magento setup:upgrade`
-- disable MFA
-    - `bin/magento module:disable {Magento_TwoFactorAuth,Magento_AdminAdobeImsTwoFactorAuth}`
-
-### Linking up the module
-- clone this repostiory into the `app/code/Converge/Converge` directory
+with this repo bind-mounted as `app/code/Converge/Converge`. The phpfpm
+container self-installs Magento on first start. See `dev/README.md` for
+the full command list and configuration knobs.

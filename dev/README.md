@@ -7,10 +7,11 @@ as the `Converge_Converge` module.
 ## Prerequisites
 
 - Docker + Docker Compose v2
-- GNU Make (any recent version)
 - Magento Marketplace access keys
   ([generate here](https://commercemarketplace.adobe.com/customer/accessKeys/)) —
   needed once, to download Magento via composer.
+- Optional: [`just`](https://github.com/casey/just) (`brew install just`)
+  for the shortcuts below — nothing here *requires* it.
 
 ## First run
 
@@ -18,34 +19,44 @@ as the `Converge_Converge` module.
 cd dev
 cp .env.example .env
 $EDITOR .env                       # fill in MAGENTO_PUBLIC_KEY / PRIVATE_KEY
-make setup                         # ~10 min: composer install + setup:install
+docker compose up -d --wait        # ~10 min: composer install + setup:install
 ```
 
-When that finishes:
+The `phpfpm` container runs the installer (`dev/install.sh`) on every
+start; on first boot that does composer-create-project, composer install,
+`setup:install`, module enable, and `setup:upgrade`. The healthcheck on
+`phpfpm` makes `nginx` wait until php-fpm is actually serving, and
+`--wait` blocks the `docker compose` command until everything is healthy.
+
+When it finishes:
 
 - Storefront: <http://localhost:8080/>
-- Admin: <http://localhost:8080/> + the path printed at the end of
-  `make setup` (Magento randomizes it, e.g. `/admin_a1b2c3`). To look it
-  up later: `make magento info:adminuri`. Default login: user `admin`,
-  pass `admin123!`.
+- Admin: <http://localhost:8080/> + the path printed at the end of the
+  installer (Magento randomizes it, e.g. `/admin_a1b2c3`). To look it up
+  later: `docker compose exec phpfpm bin/magento info:adminuri`. Default
+  login: user `admin`, pass `admin123!`.
 
 Optionally seed sample products / customers / orders (slow, ~15 min):
 
 ```bash
-make sample-data
+just sample-data        # or: docker compose exec phpfpm bin/magento sampledata:deploy && ...
 ```
 
 ## Day-to-day
 
+`just` is a thin convenience wrapper — every recipe maps to one or two
+`docker compose` commands:
+
 ```bash
-make up                       # start the stack
-make down                     # stop the stack (data persists)
-make destroy                  # stop and wipe all volumes
-make logs                     # tail container logs
-make ps                       # show container status
-make shell                    # bash inside phpfpm
-make magento cache:flush      # any bin/magento command
-./bin-magento module:status   # same idea, without make
+just                          # list all recipes
+just up                       # docker compose up -d --wait
+just down                     # docker compose down
+just destroy                  # docker compose down -v   (wipes volumes)
+just logs                     # docker compose logs -f
+just ps                       # docker compose ps
+just shell                    # docker compose exec phpfpm bash
+just magento cache:flush      # any bin/magento command
+./bin-magento module:status   # same idea, without just
 ```
 
 ## How the module is wired up
@@ -55,7 +66,7 @@ The repo is bind-mounted directly at `app/code/Converge/Converge` inside the
 rebuild or copy step. After XML / `di.xml` / `events.xml` changes:
 
 ```bash
-make magento cache:flush
+just magento cache:flush
 ```
 
 A few things that are non-obvious if you're poking at the stack:
@@ -68,8 +79,8 @@ A few things that are non-obvious if you're poking at the stack:
   is bind-mounted at the real module path, not at `/srv/converge` with a
   symlink — Magento's `Path "..." cannot be used with directory ...`
   validator vetoes any template whose realpath leaves `/var/www/html`.
-- **Sample data is a separate step.** `make setup` only installs Magento.
-  Run `make sample-data` afterwards if you want a populated catalog.
+- **Sample data is a separate step.** `just setup` only installs Magento.
+  Run `just sample-data` afterwards if you want a populated catalog.
 
 ## Troubleshooting
 
@@ -78,7 +89,7 @@ A few things that are non-obvious if you're poking at the stack:
   `docker compose exec nginx ls /sock/` should show `docker.sock`.
 - **Coming from an older revision of this stack?** The volume layout
   changed (we dropped `/srv/converge` and `composer-cache`, added
-  `sockdata`). The simplest fix is `make destroy && make setup` to start
+  `sockdata`). The simplest fix is `just destroy && just setup` to start
   from a clean slate.
 
 ## What's in `.env`

@@ -93,9 +93,9 @@ cat <<EOF
 
   The repo is bind-mounted at app/code/Converge/Converge — edits in this
   repo show up immediately. After XML/config changes:
-    make magento cache:flush
+    just magento cache:flush
 
   Optional: load Magento's sample catalog (~10-15 min):
-    make sample-data
+    just sample-data
 ------------------------------------------------------------------------
 EOF

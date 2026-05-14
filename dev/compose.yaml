@@ -61,6 +61,18 @@ services:
       MAGENTO_ADMIN_USER: "${MAGENTO_ADMIN_USER:-admin}"
       MAGENTO_ADMIN_PASSWORD: "${MAGENTO_ADMIN_PASSWORD:-admin123!}"
       MAGENTO_ADMIN_EMAIL: "${MAGENTO_ADMIN_EMAIL:-dev@runconverge.com}"
+    # Run the (idempotent) installer on every container start, then exec php-fpm.
+    # First boot does the heavy lifting (~10 min); subsequent boots are seconds.
+    command: ["bash", "-c", "/usr/local/bin/install-magento && exec php-fpm"]
+    healthcheck:
+      # The socket file appears once php-fpm has bound its listener — good
+      # enough signal that the install finished and FPM is accepting requests.
+      test: ["CMD-SHELL", "test -S /sock/docker.sock"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      # Generous start_period so first-boot composer install doesn't get marked unhealthy.
+      start_period: 600s
     depends_on:
       db:
         condition: service_healthy
@@ -80,7 +92,8 @@ services:
       # Overrides the upstream so nginx uses the unix socket instead of TCP.
       - ./nginx-default.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
-      - phpfpm
+      phpfpm:
+        condition: service_healthy
 
 volumes:
   appdata:
