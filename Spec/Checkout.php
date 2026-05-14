@@ -32,10 +32,11 @@ class Checkout
         }
         $totals = $this->quote->getTotals();
         $tax = isset($totals['tax']) ? (float) $totals['tax']->getValue() : 0.0;
-        // Discount lives on the quote address, not on $quote->getTotals() (the
-        // 'discount' totals key is not populated by the default totals collector).
-        // Magento stores it as a negative value (e.g. -10.00); Converge expects the
-        // magnitude as a positive number.
+        // Discount is collected on the quote address ($address->getTotals()
+        // has a 'discount' key), but it is NOT aggregated up to the quote-level
+        // $quote->getTotals(), so reading $totals['discount'] there always misses.
+        // Magento stores the amount as negative (e.g. -10.00); Converge expects
+        // the magnitude as a positive number.
         $address = $this->quote->isVirtual()
             ? $this->quote->getBillingAddress()
             : $this->quote->getShippingAddress();
