@@ -7,3 +7,4 @@ dev/.env
 .idea/
 .vscode/
 .DS_Store
+.gstack/
