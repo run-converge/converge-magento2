@@ -27,3 +27,7 @@ sample-data:
 # Run bin/magento <args> inside the container, e.g. `just magento cache:flush`.
 magento *args:
     {{php}} bin/magento {{args}}
+
+# Run the module's PHPUnit unit tests (pass extra args, e.g. `just test --filter ProductTest`).
+test *args:
+    {{php}} vendor/bin/phpunit -c dev/tests/unit/phpunit.xml.dist app/code/Converge/Converge/Test/Unit {{args}}
