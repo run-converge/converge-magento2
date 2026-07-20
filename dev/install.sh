@@ -76,6 +76,19 @@ fi
 echo "==> enable Converge_Converge"
 bin/magento module:enable Converge_Converge
 bin/magento config:set oauth/consumer/enable_integration_as_bearer 1
+
+# Magento 2.4 forces admin Two-Factor Auth, which emails a setup link on first
+# login. This stack has no mail server, so that send fails ("Failed to send the
+# message. Please contact the administrator") and the admin is unreachable.
+# Disable the 2FA modules so localhost admin works with just user/pass. Order
+# matters: Magento_AdminAdobeImsTwoFactorAuth depends on Magento_TwoFactorAuth,
+# so the dependent must be disabled first or the core module's disable is
+# refused. Each call is best-effort — a module may be absent on some versions,
+# or already disabled, and neither should abort the install.
+for tfa_module in Magento_AdminAdobeImsTwoFactorAuth Magento_TwoFactorAuth; do
+    bin/magento module:disable "$tfa_module" 2>/dev/null || true
+done
+
 bin/magento setup:upgrade
 bin/magento deploy:mode:set developer -s
 bin/magento cache:flush
