@@ -34,6 +34,29 @@ services:
   redis:
     image: redis:7-alpine
 
+  # Docker creates the phpfpm repo bind-mount's parent dirs
+  # (/var/www/html/app/code/Converge) owned by root before install.sh runs
+  # as the `app` user — which then can't create app/etc during composer
+  # install, so the whole install aborts on app/etc/vendor_path.php. This
+  # one-shot pre-creates that path in the appdata volume and hands the
+  # module-parent chain to `app` so the Magento install can populate app/.
+  # It deliberately does NOT bind-mount the repo, so the chown can't reach
+  # host files.
+  init-perms:
+    image: markoshust/magento-php:${PHP_TAG:-8.3-fpm-5}
+    user: root
+    volumes:
+      - appdata:/var/www/html
+    command:
+      - bash
+      - -c
+      - >-
+        mkdir -p /var/www/html/app/code/Converge &&
+        chown app:app
+        /var/www/html /var/www/html/app
+        /var/www/html/app/code /var/www/html/app/code/Converge
+    restart: "no"
+
   phpfpm:
     image: markoshust/magento-php:${PHP_TAG:-8.3-fpm-5}
     user: app
@@ -80,6 +103,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+      init-perms:
+        condition: service_completed_successfully
 
   nginx:
     image: markoshust/magento-nginx:${NGINX_TAG:-1.24-0}

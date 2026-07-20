@@ -2,23 +2,30 @@
 
 namespace Converge\Converge\Spec;
 
-use Magento\Framework\App\Config\ScopeConfigInterface;
-use Magento\Store\Model\ScopeInterface;
+use Converge\Converge\Spec\Product;
+use Magento\Catalog\Api\ProductRepositoryInterface;
+use Magento\Framework\Exception\NoSuchEntityException;
 
 class Order
 {
     private $order;
     private $currency;
     private $orderDedupMethod;
+    private $productRepository;
+    private $baseMediaUrl;
 
     public function __construct(
         \Magento\Sales\Model\Order $order,
         string $orderDedupMethod,
-        string $currency
+        string $currency,
+        ProductRepositoryInterface $productRepository,
+        string $baseMediaUrl = ''
     ) {
         $this->order = $order;
         $this->currency = $currency;
         $this->orderDedupMethod = $orderDedupMethod;
+        $this->productRepository = $productRepository;
+        $this->baseMediaUrl = $baseMediaUrl;
     }
 
     private function getOrderId(): string
@@ -26,11 +33,25 @@ class Order
         return $this->orderDedupMethod === 'order_id' ? $this->order->getRealOrderId() : $this->order->getQuoteId();
     }
 
+    /**
+     * Load the full product for a line item so its storefront URL and image
+     * attributes are populated. Order items may only carry a lightweight
+     * product, and the product may no longer exist. Returns null on failure.
+     */
+    private function loadProduct(int $productId)
+    {
+        try {
+            return $this->productRepository->getById($productId);
+        } catch (NoSuchEntityException $e) {
+            return null;
+        }
+    }
+
     public function get(): array
     {
         $items = [];
         foreach ($this->order->getAllVisibleItems() as $item) {
-            $items[] = [
+            $lineItem = [
                 "product_id" => $item->getProductId(),
                 "name" => $item->getName(),
                 "sku" => $item->getSku(),
@@ -38,6 +59,15 @@ class Order
                 "quantity" => (float) $item->getQtyOrdered(),
                 "currency" => $this->currency
             ];
+            $product = $this->loadProduct((int) $item->getProductId());
+            if ($product !== null) {
+                $lineItem["url"] = $product->getProductUrl();
+                $imageUrl = Product::imageUrl($product, $this->baseMediaUrl);
+                if ($imageUrl !== null) {
+                    $lineItem["image_url"] = $imageUrl;
+                }
+            }
+            $items[] = $lineItem;
         }
         return [
             "id" => $this->getOrderId(),

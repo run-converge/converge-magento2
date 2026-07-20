@@ -14,9 +14,10 @@ class LineItem extends Product
     public function __construct(
         ProductInterface $product,
         string $currency,
-        int $quantity
+        int $quantity,
+        string $baseMediaUrl = ''
     ) {
-        parent::__construct($product, $currency);
+        parent::__construct($product, $currency, $baseMediaUrl);
         $this->quantity = $quantity;
     }
 
