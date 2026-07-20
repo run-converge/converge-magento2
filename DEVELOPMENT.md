@@ -46,8 +46,9 @@
 ### Setting up Magento 2 for local development
 ```bash
 cd dev
-cp .env.example .env             # fill in Marketplace keys
-docker compose up -d --wait
+cp .env.example .env
+$EDITOR .env                       # fill in MAGENTO_PUBLIC_KEY / PRIVATE_KEY
+docker compose up -d --wait        # ~10 min: composer install + setup:install
 ```
 Brings up a full Magento stack (Nginx, PHP-FPM, MariaDB, OpenSearch, Redis)
 with this repo bind-mounted as `app/code/Converge/Converge`. The phpfpm
