@@ -2,26 +2,35 @@
 
 namespace Converge\Converge\Spec;
 
+use Converge\Converge\Spec\Product;
+use Magento\Catalog\Api\ProductRepositoryInterface;
+use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Quote\Model\Quote;
 
 class Checkout
 {
     private $quote;
     private $currency;
+    private $productRepository;
+    private $baseMediaUrl;
 
     public function __construct(
         Quote $quote,
-        string $currency
+        string $currency,
+        ProductRepositoryInterface $productRepository,
+        string $baseMediaUrl = ''
     ) {
         $this->quote = $quote;
         $this->currency = $currency;
+        $this->productRepository = $productRepository;
+        $this->baseMediaUrl = $baseMediaUrl;
     }
 
     public function get(): array
     {
         $items = [];
         foreach ($this->quote->getAllVisibleItems() as $item) {
-            $items[] = [
+            $lineItem = [
                 "product_id" => $item->getProductId(),
                 "name" => $item->getName(),
                 "sku" => $item->getSku(),
@@ -29,6 +38,15 @@ class Checkout
                 "quantity" => $item->getQty(),
                 "currency" => $this->currency
             ];
+            $product = $this->loadProduct((int) $item->getProductId());
+            if ($product !== null) {
+                $lineItem["url"] = $product->getProductUrl();
+                $imageUrl = Product::imageUrl($product, $this->baseMediaUrl);
+                if ($imageUrl !== null) {
+                    $lineItem["image_url"] = $imageUrl;
+                }
+            }
+            $items[] = $lineItem;
         }
         $totals = $this->quote->getTotals();
         $tax = isset($totals['tax']) ? (float) $totals['tax']->getValue() : 0.0;
@@ -55,5 +73,19 @@ class Checkout
             "currency" => $this->currency,
             "items" => $items,
         ];
+    }
+
+    /**
+     * Load the full product for a quote item so its storefront URL and image
+     * attributes are populated. Quote items may only carry a lightweight
+     * product, and the product may no longer exist. Returns null on failure.
+     */
+    private function loadProduct(int $productId)
+    {
+        try {
+            return $this->productRepository->getById($productId);
+        } catch (NoSuchEntityException $e) {
+            return null;
+        }
     }
 }

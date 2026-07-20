@@ -6,12 +6,14 @@ use Converge\Converge\Spec\LineItem;
 use Magento\Framework\Event\Observer;
 use Magento\Framework\Event\ObserverInterface;
 use Magento\Store\Model\StoreManagerInterface;
+use Magento\Framework\UrlInterface;
 use Converge\Converge\SessionDataProvider\CheckoutSessionDataProvider;
 
 class AddedToCartObserver implements ObserverInterface
 {
     private $checkoutSessionDataProvider;
     private $currency;
+    private $baseMediaUrl;
     protected $logger;
 
     public function __construct(
@@ -21,6 +23,7 @@ class AddedToCartObserver implements ObserverInterface
     ) {
         $this->checkoutSessionDataProvider = $checkoutSessionDataProvider;
         $this->currency = $storeConfig->getStore()->getCurrentCurrencyCode();
+        $this->baseMediaUrl = $storeConfig->getStore()->getBaseUrl(UrlInterface::URL_TYPE_MEDIA);
         $this->logger = $logger;
     }
 
@@ -34,7 +37,7 @@ class AddedToCartObserver implements ObserverInterface
                 'method' => 'track',
                 'eventID' => uniqid('', true),
                 'eventName' => 'Added To Cart',
-                'properties' => (new LineItem($product, $this->currency, $quantity))->get(),
+                'properties' => (new LineItem($product, $this->currency, $quantity, $this->baseMediaUrl))->get(),
             ]
         );
     }
